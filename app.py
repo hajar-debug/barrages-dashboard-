@@ -1,6 +1,9 @@
 import streamlit as st
 import pandas as pd
+import plotly.express as px
 from processing.gee_init import init_gee
+from report.report_generator import generate_pdf
+from datetime import datetime
 
 st.set_page_config(
     page_title="Barrages Maroc | Dashboard SIG",
@@ -166,20 +169,18 @@ if not df.empty:
     # ── Tabs ──
     tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES", "⚠️ RISQUES", "📄 RAPPORT"])
 
-    # Dans app.py, onglet tab1 (CARTE)
     with tab1:
         from processing.maps import build_map
         from streamlit_folium import st_folium
-    
-    # Vérifie bien que show_ndti est ajouté à la fin ici :
-    m = build_map(
-        lat, lon, row, start_str, end_str, 
-        cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti
-    )
-    
-    st_folium(m, width="stretch", height=550, returned_objects=[]) 
+        m = build_map(
+            lat, lon, row, start_str, end_str, 
+            cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti
+        )
+        st_folium(m, width="stretch", height=550, returned_objects=[]) 
+
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries
+        import plotly.express as px # Import ajouté ici pour le graphique
         with st.spinner("Calcul GEE en cours..."):
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
@@ -190,34 +191,48 @@ if not df.empty:
         c2.metric("🌫️ NDTI", f"{ndti:.3f}" if ndti else "N/A") 
         c3.metric("🌿 NDVI", f"{ndvi:.3f}" if ndvi else "N/A")
         c4.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
-
+    st.markdown("### 📈 Évolution Temporelle")
+       # --- BLOC GRAPHIQUE ---
         ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
+        
+        # On définit fig ici pour qu'il soit accessible globalement dans le script
         if ts is not None and not ts.empty:
-            import plotly.express as px
-            fig = px.line(ts, x="date", y=["NDWI", "Turbidité"], template="plotly_dark")
-            st.plotly_chart(fig, width="stretch")
+            fig = px.line(
+                ts, 
+                x="date", 
+                y=["NDWI", "Turbidité"], 
+                template="plotly_dark",
+                color_discrete_map={"NDWI": "#00c9ff", "Turbidité": "#ffa500"}
+            )
+            fig.update_layout(
+                xaxis_title="Date d'acquisition",
+                yaxis_title="Valeur de l'indice",
+                legend_title="Indices",
+                hovermode="x unified"
+            )
+            # Affichage forcé dans Streamlit
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("📊 Aucune donnée historique disponible pour cette période.")
+
     st.markdown("---")
     with st.expander("🔬 Méthodologie et Interprétation des Indices"):
         st.write("""
         ### 1. NDWI (Normalized Difference Water Index)
         **Formule :** $(Green - NIR) / (Green + NIR)$  
-        * **Utilité :** Maximise la réflectance de l'eau en utilisant la bande verte et minimise la faible réflectance de l'eau dans le proche infrarouge.
+        * **Utilité :** Maximise la réflectance de l'eau.
         * **Interprétation :** Valeurs > 0.2 indiquent de l'eau libre.
 
         ### 2. NDTI (Normalized Difference Turbidity Index)
         **Formule :** $(Red - Green) / (Red + Green)$  
-        * **Utilité :** Mesure la concentration de sédiments en suspension.
-        * **Interprétation :** Des valeurs positives indiquent une eau chargée (trouble), souvent liée à l'envasement.
+        * **Utilité :** Mesure la concentration de sédiments.
 
         ### 3. NDVI (Normalized Difference Vegetation Index)
         **Formule :** $(NIR - Red) / (NIR + Red)$  
-        * **Utilité :** Évalue la vigueur de la végétation autour du barrage.
-        * **Interprétation :** Un NDVI faible (< 0.2) signifie un sol nu ou un stress hydrique.
         """)
 
     with tab3:
         from processing.analysis import compute_risk, generate_alerts
-        # MODIF 2 : Passage du paramètre ndti pour le calcul du risque et les alertes
         rl, rs = compute_risk(ndwi, ndvi, ndti)
         al = generate_alerts(ndwi, ndvi, water, ndti)
         
@@ -246,20 +261,19 @@ if not df.empty:
             interpretation += "🌫️ **Turbidité** : Concentration élevée de sédiments en suspension.\n\n"
     
         if ndvi is not None:
-            if ndvi > 0.4: interpretation += "🌿 **Végétation** : Forte densité végétale (risque d'eutrophisation).\n"
+            if ndvi > 0.4: interpretation += "🌿 **Végétation** : Forte densité végétale.\n"
             else: interpretation += "🍂 **Végétation** : Couverture végétale normale.\n"
 
         if st.button("🏗️ Préparer le rapport PDF"):
-            with st.spinner("Rédaction du rapport..."):
-                # MODIF 3 : Ajout du paramètre ndti pour le PDF
-                pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
+            with st.spinner("Rédaction du rapport avec graphiques..."):
+                # AJOUT : Passage du paramètre fig=fig
+                pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
                 
+                # Conversion sécurisée en bytes
                 if isinstance(pdf_output, str):
                     pdf_bytes = pdf_output.encode('latin-1')
-                elif isinstance(pdf_output, bytearray):
-                    pdf_bytes = bytes(pdf_output)
                 else:
-                    pdf_bytes = pdf_output
+                    pdf_bytes = bytes(pdf_output)
 
                 st.success("✅ Rapport prêt !")
                 st.download_button(

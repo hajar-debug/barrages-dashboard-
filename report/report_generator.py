@@ -4,7 +4,7 @@ from datetime import datetime
 
 class BarragePDF(FPDF):
     def header(self):
-        # Fond du header (Bleu foncé comme le dashboard)
+        # Fond du header
         self.set_fill_color(10, 14, 26)
         self.rect(0, 0, 210, 30, "F")
         
@@ -57,7 +57,7 @@ class BarragePDF(FPDF):
         self.cell(width-4, 10, str(value), align="C")
 
 def generate_pdf(barrage_name, row, ndwi, ndvi, water,
-                  risk_level, risk_score, alerts, start, end, ndti=None): # Ajout ndti
+                  risk_level, risk_score, alerts, start, end, ndti=None, fig=None): # Ajout fig
     
     pdf = BarragePDF()
     pdf.set_auto_page_break(auto=True, margin=20)
@@ -88,7 +88,7 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
         pdf.info_row(label, value, alt=(i % 2 == 1))
     pdf.ln(6)
 
-    # --- Indices (4 boîtes maintenant) ---
+    # --- Indices ---
     pdf.section_title("INDICES SATELLITAIRES (SENTINEL-2)")
     y0 = pdf.get_y()
     
@@ -100,14 +100,27 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
     pdf.set_x(10)
     pdf.metric_box("NDWI (Eau)", ndwi_s, (0, 201, 255))
     pdf.set_xy(58, y0)
-    pdf.metric_box("NDTI (Turbidite)", ndti_s, (255, 149, 0)) # Nouvelle boîte
+    pdf.metric_box("NDTI (Turbidite)", ndti_s, (255, 149, 0))
     pdf.set_xy(106, y0)
     pdf.metric_box("NDVI (Vegetation)", ndvi_s, (0, 229, 160))
     pdf.set_xy(154, y0)
     pdf.metric_box("Surface", water_s, (232, 237, 245))
     pdf.ln(28)
 
-    # --- Risque ---
+    # --- INSERTION DU GRAPHIQUE (NOUVEAU) ---
+    if fig is not None:
+        try:
+            pdf.section_title("EVOLUTION TEMPORELLE")
+            # Conversion de la figure Plotly en image
+            img_bytes = fig.to_image(format="png", width=700, height=300, scale=2)
+            img_io = io.BytesIO(img_bytes)
+            pdf.image(img_io, x=10, y=pdf.get_y(), w=190)
+            pdf.ln(65) # On laisse de l'espace pour l'image
+        except Exception as e:
+            pdf.set_font("Helvetica", "I", 8)
+            pdf.cell(0, 10, "Graphique non disponible", ln=True)
+
+    # --- Risque et Alertes ---
     pdf.section_title("EVALUATION DU RISQUE ET ALERTES")
     clean_risk = str(risk_level).replace("🟢 ", "").replace("🟠 ", "").replace("🔴 ", "")
     risk_colors = {"Faible": (0, 229, 160), "Moyen": (255, 149, 0), "Critique": (255, 59, 92)}
@@ -124,16 +137,19 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
     pdf.rect(10, pdf.get_y(), int(190 * risk_score / 100), 3, "F")
     pdf.ln(10)
 
-    # Alertes
+    # Alertes (MAINTENANT EN NOIR SOMBRE)
     if alerts:
         pdf.set_font("Helvetica", "B", 9)
-        pdf.set_text_color(255, 143, 163)
+        pdf.set_text_color(20, 20, 20) # Noir profond pour lisibilité
         pdf.cell(190, 7, "Alertes techniques detectees :", ln=True)
         pdf.set_font("Helvetica", "", 9)
-        pdf.set_text_color(232, 237, 245)
         for alert in alerts:
-            a_clean = alert.encode('latin-1', 'ignore').decode('latin-1').replace("🚨", "").replace("⚠️", "").replace("🌫️", "").replace("💧", "")
+            # Nettoyage des caractères et emojis
+            a_clean = alert.encode('latin-1', 'ignore').decode('latin-1')
+            for emoji in ["🚨", "⚠️", "🌫️", "💧", "🔴", "🟠", "🟡", "🌿"]:
+                a_clean = a_clean.replace(emoji, "")
+            
             pdf.set_x(14)
-            pdf.multi_cell(180, 6, f"- {a_clean}")
+            pdf.multi_cell(180, 6, f"- {a_clean.strip()}")
     
     return pdf.output()
