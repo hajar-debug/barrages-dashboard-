@@ -17,15 +17,34 @@ def get_base_collection(lat, lon, start, end, cloud_pct):
             .clip(roi))
 
 # --- NOUVEAU : INDICE DE TURBIDITÉ (NDTI) ---
+# Dans processing/indices.py
+
 def get_ndti_tile_url(lat, lon, start, end, cloud_pct):
-    """Génère l'URL pour la carte de turbidité (envasement)."""
+    """Génère l'URL de la couche NDTI (Turbidité) depuis GEE"""
+    import ee
     try:
-        img = get_base_collection(lat, lon, start, end, cloud_pct)
-        # NDTI = (Red - Green) / (Red + Green) -> (B4 - B3)
-        ndti = img.normalizedDifference(['B4', 'B3']).rename('NDTI')
-        vis_params = {'min': -0.1, 'max': 0.3, 'palette': ['#313695', '#4575b4', '#e0f3f8', '#fee090', '#d73027']}
-        return ndti.getMapId(vis_params)['tile_fetcher'].url_format
-    except: return None
+        # On définit la zone (buffer de 5km autour du barrage)
+        point = ee.Geometry.Point([lon, lat]).buffer(5000).bounds()
+        
+        # Collection Sentinel-2
+        col = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+               .filterBounds(point)
+               .filterDate(start, end)
+               .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct))
+               .median())
+
+        # Calcul du NDTI : (Red - Green) / (Red + Green)
+        # Note : Les bandes S2 sont B4 (Red) et B3 (Green)
+        ndti = col.normalizedDifference(['B4', 'B3']).rename('NDTI')
+
+        # Paramètres de visualisation (Brun/Jaune pour la turbidité)
+        viz = {'min': -0.1, 'max': 0.3, 'palette': ['#ffffff', '#f1e7d2', '#d2b48c', '#8b4513']}
+        
+        map_id = ee.data.getMapId({'image': ndti, 'visParams': viz})
+        return map_id['tile_fetcher'].url_format
+    except Exception as e:
+        print(f"Erreur NDTI Tile: {e}")
+        return None
 
 # --- INDICE D'EAU (NDWI) ---
 def get_ndwi_tile_url(lat, lon, start, end, cloud_pct):
