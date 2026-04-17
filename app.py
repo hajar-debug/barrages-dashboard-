@@ -1,5 +1,15 @@
 import streamlit as st
 import pandas as pd
+import streamlit as st
+
+# TEST TEMPORAIRE
+st.write("### 🔍 Diagnostic des Secrets")
+if len(st.secrets) == 0:
+    st.error("❌ Streamlit ne voit AUCUN secret. Vérifie si tu as bien cliqué sur 'Save' dans Streamlit Cloud.")
+else:
+    st.write("Clés détectées :", list(st.secrets.keys()))
+
+
 from processing.gee_init import init_gee
 
 st.set_page_config(
@@ -320,4 +330,4 @@ if st.button("📥 Générer le rapport PDF", use_container_width=True):
     except Exception as e:
         st.error(f"Erreur technique : {e}")
     
-    
+
