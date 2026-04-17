@@ -5,7 +5,11 @@ def init_gee():
     """Initialisation sécurisée pour Streamlit Cloud."""
     try:
         # 1. On vérifie si GEE est déjà initialisé
-        if not ee.data_is_initialized():
+        try:
+    ee.Initialize()
+except:
+    # Si non initialisé, on continue vers l'authentification
+    pass
             # 2. On cherche tes secrets que tu viens de coller
             if "GEE_SERVICE_ACCOUNT" in st.secrets:
                 creds = dict(st.secrets["GEE_SERVICE_ACCOUNT"])
