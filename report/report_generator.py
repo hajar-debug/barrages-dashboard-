@@ -4,7 +4,7 @@ from datetime import datetime
 
 class BarragePDF(FPDF):
     def header(self):
-        # Fond du header
+        # Fond du header (Bleu foncé comme le dashboard)
         self.set_fill_color(10, 14, 26)
         self.rect(0, 0, 210, 30, "F")
         
@@ -16,7 +16,7 @@ class BarragePDF(FPDF):
         self.set_font("Helvetica", "", 8)
         self.set_text_color(107, 127, 163)
         self.set_xy(10, 20)
-        # Correction : suppression de l'accent sur "généré" pour éviter KeyError
+        # Texte sans accents pour éviter les erreurs de police
         self.cell(0, 6, f"Rapport genere le {datetime.now().strftime('%d/%m/%Y a %H:%M')}")
         self.ln(18)
 
@@ -24,7 +24,7 @@ class BarragePDF(FPDF):
         self.set_y(-15)
         self.set_font("Helvetica", "I", 8)
         self.set_text_color(107, 127, 163)
-        self.cell(0, 10, f"Page {self.page_no()} | Systeme de Surveillance SIG des Barrages Marocains", align="C")
+        self.cell(0, 10, f"Page {self.page_no()} | Systeme de Surveillance SIG - Hajar", align="C")
 
     def section_title(self, title):
         self.set_fill_color(17, 24, 39)
@@ -41,8 +41,8 @@ class BarragePDF(FPDF):
         self.set_x(10)
         self.cell(70, 7, label, fill=True)
         self.set_text_color(232, 237, 245)
-        # On force value en string et on retire les caractères non-latin1 si besoin
-        val_clean = str(value).encode('latin-1', 'replace').decode('latin-1')
+        # Nettoyage automatique des caractères non-compatibles
+        val_clean = str(value).encode('latin-1', 'ignore').decode('latin-1')
         self.cell(120, 7, val_clean, fill=True, ln=True)
 
     def metric_box(self, label, value, color_rgb=(0, 201, 255)):
@@ -70,10 +70,12 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
     pdf.set_text_color(255, 255, 255)
     pdf.set_font("Helvetica", "B", 14)
     pdf.set_x(10)
-    pdf.cell(190, 12, f"  Barrage : {barrage_name}", fill=True, ln=True)
+    # On nettoie le nom du barrage
+    b_name_clean = str(barrage_name).encode('latin-1', 'ignore').decode('latin-1')
+    pdf.cell(190, 12, f"  Barrage : {b_name_clean}", fill=True, ln=True)
     pdf.ln(4)
 
-    # ── Période (Correction : flèche remplacée par 'au') ────────────────────
+    # ── Période ────────────────────────────────────────────────────────────
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(107, 127, 163)
     pdf.set_x(10)
@@ -82,13 +84,12 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
 
     # ── Fiche technique ────────────────────────────────────────────────────
     pdf.section_title("FICHE TECHNIQUE")
-    # Note: On utilise row.get(nom_colonne) en minuscules car on a nettoyé le DF avant
     fields = [
-        ("Nom officiel",     row.get("barrage", "—")),
         ("Capacite (Mm3)",   row.get("capacite", "—")),
         ("Region",           row.get("nom_region", "—")),
         ("Province",         row.get("nom_provin", "—")),
         ("Commune",          row.get("nom_commun", "—")),
+        ("Bassin",           row.get("bassin", "—")),
         ("Coordonnees",      f"{row.get('lat','—')} N, {row.get('lon','—')} E"),
     ]
     for i, (label, value) in enumerate(fields):
@@ -96,7 +97,7 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
     pdf.ln(6)
 
     # ── Indices ────────────────────────────────────────────────────────────
-    pdf.section_title("INDICES SATELLITAIRES")
+    pdf.section_title("INDICES SATELLITAIRES (SENTINEL-2)")
     pdf.set_x(10)
     y0 = pdf.get_y()
 
@@ -104,38 +105,38 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
     ndvi_str  = f"{ndvi:.3f}" if ndvi is not None else "N/A"
     water_str = f"{water:.2f} km2" if water is not None else "N/A"
 
-    pdf.metric_box("NDWI (indice eau)", ndwi_str, (0, 201, 255))
+    pdf.metric_box("NDWI (Eau)", ndwi_str, (0, 201, 255))
     pdf.set_xy(pdf.get_x() + 62, y0)
-    pdf.metric_box("NDVI (vegetation)", ndvi_str, (0, 229, 160))
+    pdf.metric_box("NDVI (Vegetation)", ndvi_str, (0, 229, 160))
     pdf.set_xy(pdf.get_x() + 62, y0)
-    pdf.metric_box("Surface eau estimee", water_str, (0, 102, 255))
+    pdf.metric_box("Surface estimee", water_str, (0, 102, 255))
     pdf.ln(28)
 
     # ── Risque ────────────────────────────────────────────────────────────
-    pdf.section_title("EVALUATION DU RISQUE")
+    pdf.section_title("EVALUATION DU RISQUE ET ALERTES")
     
-    # Nettoyage des emojis pour Helvetica
-    clean_risk = risk_level.replace("🟢 ", "").replace("🟠 ", "").replace("🔴 ", "")
+    # On enlève les emojis qui font planter le PDF
+    clean_risk = str(risk_level).replace("🟢 ", "").replace("🟠 ", "").replace("🔴 ", "")
     
     risk_colors = {
-        "🟢 Faible":   (0, 229, 160),
-        "🟠 Moyen":    (255, 149, 0),
-        "🔴 Critique": (255, 59, 92),
+        "Faible":   (0, 229, 160),
+        "Moyen":    (255, 149, 0),
+        "Critique": (255, 59, 92),
     }
-    r, g, b = risk_colors.get(risk_level, (255, 149, 0))
+    r, g, b = risk_colors.get(clean_risk, (255, 149, 0))
 
     pdf.set_font("Helvetica", "B", 11)
     pdf.set_text_color(r, g, b)
     pdf.set_x(10)
     pdf.cell(190, 8, f"Niveau de risque : {clean_risk}   (Score : {risk_score}/100)", ln=True)
 
-    # Barre de risque
+    # Barre de progression du risque
     pdf.set_x(10)
     pdf.set_fill_color(26, 34, 53)
-    pdf.rect(10, pdf.get_y(), 190, 6, "F")
+    pdf.rect(10, pdf.get_y(), 190, 4, "F")
     bar_w = int(190 * risk_score / 100)
     pdf.set_fill_color(r, g, b)
-    pdf.rect(10, pdf.get_y(), bar_w, 6, "F")
+    pdf.rect(10, pdf.get_y(), bar_w, 4, "F")
     pdf.ln(10)
 
     # Alertes
@@ -146,17 +147,14 @@ def generate_pdf(barrage_name, row, ndwi, ndvi, water,
         pdf.cell(190, 7, "Alertes detectees :", ln=True)
         pdf.set_font("Helvetica", "", 9)
         for alert in alerts:
+            # On retire les emojis et accents des alertes
+            alert_clean = alert.encode('latin-1', 'ignore').decode('latin-1').replace("🚨", "").replace("⚠️", "")
             pdf.set_x(14)
-            pdf.cell(4, 6, "-")
             pdf.set_text_color(232, 237, 245)
-            # Nettoyage des accents pour le texte des alertes
-            alert_clean = alert.encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(180, 6, alert_clean)
+            pdf.multi_cell(180, 6, f"- {alert_clean}")
     else:
         pdf.set_text_color(0, 229, 160)
-        pdf.cell(190, 7, "Aucune alerte - etat satisfaisant.", ln=True)
+        pdf.cell(190, 7, "Aucune alerte detectee.", ln=True)
 
-    # ── Export ────────────────────────────────────────────────────────────
-    # Avec fpdf2, output() renvoie les bytes directement
+    # Exportation finale en bytes
     return pdf.output()
-    
