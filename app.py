@@ -180,7 +180,8 @@ if not df.empty:
 
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries
-        import plotly.express as px # Import ajouté ici pour le graphique
+        import plotly.express as px
+        
         with st.spinner("Calcul GEE en cours..."):
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
@@ -191,11 +192,13 @@ if not df.empty:
         c2.metric("🌫️ NDTI", f"{ndti:.3f}" if ndti else "N/A") 
         c3.metric("🌿 NDVI", f"{ndvi:.3f}" if ndvi else "N/A")
         c4.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
-    st.markdown("### 📈 Évolution Temporelle")
-       # --- BLOC GRAPHIQUE ---
+
+        st.markdown("### 📈 Évolution Temporelle")
+
+        # --- BLOC GRAPHIQUE (Bien aligné sous tab2) ---
         ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
+        fig = None # Pour garantir l'accès dans l'onglet Rapport
         
-        # On définit fig ici pour qu'il soit accessible globalement dans le script
         if ts is not None and not ts.empty:
             fig = px.line(
                 ts, 
@@ -210,26 +213,25 @@ if not df.empty:
                 legend_title="Indices",
                 hovermode="x unified"
             )
-            # Affichage forcé dans Streamlit
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("📊 Aucune donnée historique disponible pour cette période.")
 
-    st.markdown("---")
-    with st.expander("🔬 Méthodologie et Interprétation des Indices"):
-        st.write("""
-        ### 1. NDWI (Normalized Difference Water Index)
-        **Formule :** $(Green - NIR) / (Green + NIR)$  
-        * **Utilité :** Maximise la réflectance de l'eau.
-        * **Interprétation :** Valeurs > 0.2 indiquent de l'eau libre.
+        st.markdown("---")
+        with st.expander("🔬 Méthodologie et Interprétation des Indices"):
+            st.write("""
+            ### 1. NDWI (Normalized Difference Water Index)
+            **Formule :** $(Green - NIR) / (Green + NIR)$  
+            * **Utilité :** Maximise la réflectance de l'eau.
+            * **Interprétation :** Valeurs > 0.2 indiquent de l'eau libre.
 
-        ### 2. NDTI (Normalized Difference Turbidity Index)
-        **Formule :** $(Red - Green) / (Red + Green)$  
-        * **Utilité :** Mesure la concentration de sédiments.
+            ### 2. NDTI (Normalized Difference Turbidity Index)
+            **Formule :** $(Red - Green) / (Red + Green)$  
+            * **Utilité :** Mesure la concentration de sédiments.
 
-        ### 3. NDVI (Normalized Difference Vegetation Index)
-        **Formule :** $(NIR - Red) / (NIR + Red)$  
-        """)
+            ### 3. NDVI (Normalized Difference Vegetation Index)
+            **Formule :** $(NIR - Red) / (NIR + Red)$  
+            """)
 
     with tab3:
         from processing.analysis import compute_risk, generate_alerts
