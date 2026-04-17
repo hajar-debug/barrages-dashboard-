@@ -180,8 +180,7 @@ if not df.empty:
 
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries
-        import plotly.express as px
-        
+        import plotly.express as px # Import ajouté ici pour le graphique
         with st.spinner("Calcul GEE en cours..."):
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
@@ -192,13 +191,11 @@ if not df.empty:
         c2.metric("🌫️ NDTI", f"{ndti:.3f}" if ndti else "N/A") 
         c3.metric("🌿 NDVI", f"{ndvi:.3f}" if ndvi else "N/A")
         c4.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
-
-        st.markdown("### 📈 Évolution Temporelle")
-
-        # --- BLOC GRAPHIQUE (Bien aligné sous tab2) ---
+    st.markdown("### 📈 Évolution Temporelle")
+       # --- BLOC GRAPHIQUE ---
         ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
-        fig = None # Pour garantir l'accès dans l'onglet Rapport
         
+        # On définit fig ici pour qu'il soit accessible globalement dans le script
         if ts is not None and not ts.empty:
             fig = px.line(
                 ts, 
@@ -213,25 +210,25 @@ if not df.empty:
                 legend_title="Indices",
                 hovermode="x unified"
             )
+            # Affichage forcé dans Streamlit
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("📊 Aucune donnée historique disponible pour cette période.")
+    st.markdown("---")
+    with st.expander("🔬 Méthodologie et Interprétation des Indices"):
+        st.write("""
+        ### 1. NDWI (Normalized Difference Water Index)
+        **Formule :** $(Green - NIR) / (Green + NIR)$  
+        * **Utilité :** Maximise la réflectance de l'eau.
+        * **Interprétation :** Valeurs > 0.2 indiquent de l'eau libre.
 
-        st.markdown("---")
-        with st.expander("🔬 Méthodologie et Interprétation des Indices"):
-            st.write("""
-            ### 1. NDWI (Normalized Difference Water Index)
-            **Formule :** $(Green - NIR) / (Green + NIR)$  
-            * **Utilité :** Maximise la réflectance de l'eau.
-            * **Interprétation :** Valeurs > 0.2 indiquent de l'eau libre.
+        ### 2. NDTI (Normalized Difference Turbidity Index)
+        **Formule :** $(Red - Green) / (Red + Green)$  
+        * **Utilité :** Mesure la concentration de sédiments.
 
-            ### 2. NDTI (Normalized Difference Turbidity Index)
-            **Formule :** $(Red - Green) / (Red + Green)$  
-            * **Utilité :** Mesure la concentration de sédiments.
-
-            ### 3. NDVI (Normalized Difference Vegetation Index)
-            **Formule :** $(NIR - Red) / (NIR + Red)$  
-            """)
+        ### 3. NDVI (Normalized Difference Vegetation Index)
+        **Formule :** $(NIR - Red) / (NIR + Red)$  
+        """)
 
     with tab3:
         from processing.analysis import compute_risk, generate_alerts
@@ -247,24 +244,29 @@ if not df.empty:
         for a in al: st.warning(a)
 
     with tab4:
-        st.markdown("### 📄 Génération du Rapport d'Analyse")
-        st.write("Ce rapport compile les données techniques et une interprétation experte.")
-
-        from report.report_generator import generate_pdf
-        from datetime import datetime
-
-        interpretation = ""
-        if ndwi is not None:
-            if ndwi > 0.2: interpretation += "✅ **État de l'eau** : Présence d'une nappe d'eau claire.\n\n"
-            elif ndwi > 0: interpretation += "⚠️ **État de l'eau** : Eau turbide ou faible profondeur.\n\n"
-            else: interpretation += "🚨 **Alerte** : Déficit hydrique sévère.\n\n"
+        st.markdown("### 📄 Analyse Hydrologique & Rapport")
         
-        if ndti and ndti > 0.05: 
-            interpretation += "🌫️ **Turbidité** : Concentration élevée de sédiments en suspension.\n\n"
-    
-        if ndvi is not None:
-            if ndvi > 0.4: interpretation += "🌿 **Végétation** : Forte densité végétale.\n"
-            else: interpretation += "🍂 **Végétation** : Couverture végétale normale.\n"
+        # 1. Logique d'interprétation dynamique
+        interpretation = ""
+        
+        if ndwi is not None:
+            # Pour un grand barrage, un NDWI moyen > 0.15 indique souvent un remplissage massif
+            if ndwi > 0.15: 
+                st.success("🌊 **DIAGNOSTIC : CRUE / REMPLISSAGE ÉLEVÉ**")
+                interpretation += "✅ **État de l'eau** : La retenue affiche un indice de présence d'eau élevé, typique des périodes de fortes précipitations.\n\n"
+            elif ndwi > 0.02:
+                st.info("📊 **DIAGNOSTIC : NIVEAU NORMAL**")
+                interpretation += "⚠️ **État de l'eau** : Niveau de remplissage moyen.\n\n"
+            else:
+                st.error("🚨 **DIAGNOSTIC : ALERTE SÉCHERESSE**")
+                interpretation += "🚨 **Alerte** : Très faible réflectance de l'eau. Risque de déficit hydrique sévère.\n\n"
+        
+        if ndti is not None:
+            if ndti > 0.05:
+                st.warning("🌫️ **TURBIDITÉ ÉLEVÉE**")
+                interpretation += "🌫️ **Qualité** : Forte concentration de sédiments détectée, suggérant un apport de boues par les oueds (crues) ou un envasement important.\n\n"
+            else:
+                interpretation += "✨ **Qualité** : Eau claire avec peu de sédiments en suspension.\n\n"
 
         if st.button("🏗️ Préparer le rapport PDF"):
             with st.spinner("Rédaction du rapport avec graphiques..."):

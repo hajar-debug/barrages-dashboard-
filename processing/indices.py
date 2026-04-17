@@ -103,25 +103,54 @@ def water_surface(lat, lon, start, end, cloud_pct):
         return area_m2 / 1e6
     except: return None
 
-def get_timeseries(lat, lon, start, end, cloud_pct):
-    """Génère les données pour le graphique temporel."""
+def get_timeseries(lat, lon, start, end, cloud):
+    # ON PASSE À 5000m (5km) pour englober tout le barrage d'Oued El Makhazine
+    roi = ee.Geometry.Point([lon, lat]).buffer(5000) 
+    
+    col = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
+        .filterBounds(roi) \
+        .filterDate(start, end) \
+        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud))
+
+    def extract_metrics(img):
+        date = img.date().format('YYYY-MM-dd')
+        
+        # NDWI (Eau) - Utilise mean() pour avoir une valeur moyenne sur tout le barrage
+        ndwi_img = img.normalizedDifference(['B3', 'B8'])
+        ndwi_val = ndwi_img.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=roi,
+            scale=30
+        ).get('nd')
+        
+        # NDTI (Turbidité/Sédiments)
+        ndti_img = img.normalizedDifference(['B4', 'B3'])
+        ndti_val = ndti_img.reduceRegion(
+            reducer=ee.Reducer.mean(),
+            geometry=roi,
+            scale=30
+        ).get('nd')
+        
+        return ee.Feature(None, {
+            'date': date,
+            'NDWI': ndwi_val,
+            'Turbidité': ndti_val
+        })
+
     try:
-        roi = ee.Geometry.Point([lon, lat]).buffer(1000).bounds()
-        col = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
-               .filterBounds(roi).filterDate(start, end)
-               .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct)))
-
-        def calc_indices(img):
-            ndwi = img.normalizedDifference(['B3', 'B8']).reduceRegion(ee.Reducer.mean(), roi, 20).get('nd')
-            ndti = img.normalizedDifference(['B4', 'B3']).reduceRegion(ee.Reducer.mean(), roi, 20).get('nd')
-            return ee.Feature(None, {'date': img.date().format('YYYY-MM-DD'), 'NDWI': ndwi, 'Turbidité': ndti})
-
-        features = col.map(calc_indices).getInfo()['features']
-        df = pd.DataFrame([f['properties'] for f in features])
+        # Transformation GEE -> Liste Python
+        info = col.map(extract_metrics).getInfo()
+        features = info.get('features', [])
+        data = [f['properties'] for f in features if f['properties']['NDWI'] is not None]
+        
+        df = pd.DataFrame(data)
         if not df.empty:
             df['date'] = pd.to_datetime(df['date'])
+            df = df.sort_values('date')
         return df
-    except: return None
+    except Exception as e:
+        print(f"Erreur GEE: {e}")
+        return pd.DataFrame()
 
 # À ajouter dans processing/indices.py
 

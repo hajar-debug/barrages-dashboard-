@@ -1,8 +1,9 @@
 import folium
 from folium import plugins
 
-def build_map(lat, lon, row, start, end, cloud_pct=20,
-              show_ndwi=True, show_ndvi=True, show_rgb=False, show_ndti=True): # Ajout paramètre show_ndti
+def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, show_ndti):
+    # AUGMENTER ICI AUSSI À 5000
+    roi = ee.Geometry.Point([lon, lat]).buffer(5000)
     
     # Ajout de get_ndti_tile_url dans l'import
     from processing.indices import get_ndwi_tile_url, get_ndvi_tile_url, get_rgb_tile_url, get_ndti_tile_url
