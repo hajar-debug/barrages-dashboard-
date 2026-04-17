@@ -2,20 +2,28 @@ import ee
 import streamlit as st
 
 def init_gee():
-    """Initialise GEE avec les secrets configurés."""
+    """Initialise GEE sans utiliser d'attributs obsolètes."""
     try:
-        if not ee.data_is_initialized():
-            # On vérifie si la clé exacte existe dans les secrets
-            if "GEE_SERVICE_ACCOUNT" in st.secrets:
-                creds = dict(st.secrets["GEE_SERVICE_ACCOUNT"])
-                auth = ee.ServiceAccountCredentials(
-                    creds['client_email'], 
-                    key_data=creds['private_key']
-                )
-                ee.Initialize(auth, project=creds['project_id'])
-            else:
-                # Mode local pour ton PC
-                ee.Initialize(project='ton-projet-id-local')
+        # On essaie de voir si une clé existe, peu importe son nom
+        creds_dict = None
+        if "GEE_SERVICE_ACCOUNT" in st.secrets:
+            creds_dict = dict(st.secrets["GEE_SERVICE_ACCOUNT"])
+        elif "gcp_service_account" in st.secrets:
+            creds_dict = dict(st.secrets["gcp_service_account"])
+
+        if creds_dict:
+            # MODE CLOUD
+            auth = ee.ServiceAccountCredentials(
+                creds_dict['client_email'], 
+                key_data=creds_dict['private_key']
+            )
+            ee.Initialize(auth, project=creds_dict.get('project_id'))
+        else:
+            # MODE LOCAL
+            ee.Initialize(project='barrages-project')
+            
     except Exception as e:
-        st.error(f"Erreur d'initialisation GEE : {e}")
-        raise e
+        # Si c'est déjà initialisé, on ne fait rien, sinon on affiche l'erreur
+        if "already initialized" not in str(e).lower():
+            st.error(f"Erreur d'initialisation GEE : {e}")
+            raise e
