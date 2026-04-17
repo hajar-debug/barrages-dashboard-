@@ -1,15 +1,5 @@
 import streamlit as st
 import pandas as pd
-import streamlit as st
-
-# TEST TEMPORAIRE
-st.write("### 🔍 Diagnostic des Secrets")
-if len(st.secrets) == 0:
-    st.error("❌ Streamlit ne voit AUCUN secret. Vérifie si tu as bien cliqué sur 'Save' dans Streamlit Cloud.")
-else:
-    st.write("Clés détectées :", list(st.secrets.keys()))
-
-
 from processing.gee_init import init_gee
 
 st.set_page_config(
@@ -294,40 +284,37 @@ with tab3:
     st.markdown(f'<span class="risk-badge {badge_class}">{risk_level} (Score: {risk_score}/100)</span>', unsafe_allow_html=True)
     for alert in (alerts or ["✅ Aucune alerte"]):
         st.markdown(f'<div class="alert-box">{alert}</div>', unsafe_allow_html=True)
-
 with tab4:
+    st.markdown('<div class="section-title">📄 Exportation Rapport</div>', unsafe_allow_html=True)
     from report.report_generator import generate_pdf
-    # Dans app.py
-# Dans app.py, à l'intérieur du bloc 'with tab4:'
-if st.button("📥 Générer le rapport PDF", use_container_width=True):
-    try:
-        with st.spinner("Génération du PDF..."):
-            # On passe TOUTES les variables nécessaires à la fonction
-            pdf_output = generate_pdf(
-                barrage_name=choice, 
-                row=row, 
-                ndwi=ndwi, 
-                ndvi=ndvi, 
-                water=water, 
-                risk_level=risk_level, 
-                risk_score=risk_score, 
-                alerts=alerts, 
-                start=start_str, 
-                end=end_str
-            )
-            
-            # Conversion en bytes pour Streamlit
-            final_pdf = bytes(pdf_output)
-            
-            st.success("✅ Rapport généré avec succès !")
-            st.download_button(
-                label="⬇️ Télécharger le PDF",
-                data=final_pdf,
-                file_name=f"Rapport_{choice}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-    except Exception as e:
-        st.error(f"Erreur technique : {e}")
     
-
+    if st.button("📥 Générer le rapport PDF", use_container_width=True):
+        try:
+            with st.spinner("Génération du PDF..."):
+                # On passe TOUTES les variables nécessaires
+                pdf_output = generate_pdf(
+                    barrage_name=choice, 
+                    row=row, 
+                    ndwi=ndwi, 
+                    ndvi=ndvi, 
+                    water=water, 
+                    risk_level=risk_level, 
+                    risk_score=risk_score, 
+                    alerts=alerts, 
+                    start=start_str, 
+                    end=end_str
+                )
+                
+                # Conversion impérative en bytes
+                final_pdf = bytes(pdf_output)
+                
+                st.success("✅ Rapport généré avec succès !")
+                st.download_button(
+                    label="⬇️ Télécharger le PDF",
+                    data=final_pdf,
+                    file_name=f"Rapport_{choice}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+        except Exception as e:
+            st.error(f"Erreur technique : {e}")

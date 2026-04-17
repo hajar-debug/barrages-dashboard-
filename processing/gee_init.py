@@ -3,10 +3,10 @@ import streamlit as st
 
 def init_gee():
     try:
-        # On essaie d'abord de voir si GEE est déjà prêt
+        # Test si déjà initialisé
         ee.Initialize()
     except:
-        # Si non, on utilise les secrets
+        # Si non, on cherche les secrets
         if "GEE_SERVICE_ACCOUNT" in st.secrets:
             creds = dict(st.secrets["GEE_SERVICE_ACCOUNT"])
             auth = ee.ServiceAccountCredentials(
@@ -15,5 +15,5 @@ def init_gee():
             )
             ee.Initialize(auth, project=creds.get('project_id'))
         else:
-            # Mode local pour tes tests
+            # Mode local pour ton PC
             ee.Initialize(project='barrages-project')
