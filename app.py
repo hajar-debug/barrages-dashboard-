@@ -166,13 +166,18 @@ if not df.empty:
     # ── Tabs ──
     tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES", "⚠️ RISQUES", "📄 RAPPORT"])
 
+    # Dans app.py, onglet tab1 (CARTE)
     with tab1:
         from processing.maps import build_map
         from streamlit_folium import st_folium
-        # MODIF 1 : Ajout de show_ndti pour la carte
-        m = build_map(lat, lon, row, start_str, end_str, cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti)
-        st_folium(m, width="stretch", height=550, returned_objects=[])
-
+    
+    # Vérifie bien que show_ndti est ajouté à la fin ici :
+    m = build_map(
+        lat, lon, row, start_str, end_str, 
+        cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti
+    )
+    
+    st_folium(m, width="stretch", height=550, returned_objects=[]) 
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries
         with st.spinner("Calcul GEE en cours..."):
