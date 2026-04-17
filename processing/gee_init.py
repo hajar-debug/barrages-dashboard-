@@ -2,28 +2,27 @@ import ee
 import streamlit as st
 
 def init_gee():
-    """Initialise GEE sans utiliser d'attributs obsolètes."""
+    """Initialisation sécurisée pour Streamlit Cloud."""
     try:
-        # On essaie de voir si une clé existe, peu importe son nom
-        creds_dict = None
-        if "GEE_SERVICE_ACCOUNT" in st.secrets:
-            creds_dict = dict(st.secrets["GEE_SERVICE_ACCOUNT"])
-        elif "gcp_service_account" in st.secrets:
-            creds_dict = dict(st.secrets["gcp_service_account"])
-
-        if creds_dict:
-            # MODE CLOUD
-            auth = ee.ServiceAccountCredentials(
-                creds_dict['client_email'], 
-                key_data=creds_dict['private_key']
-            )
-            ee.Initialize(auth, project=creds_dict.get('project_id'))
-        else:
-            # MODE LOCAL
-            ee.Initialize(project='barrages-project')
-            
+        # 1. On vérifie si GEE est déjà initialisé
+        if not ee.data_is_initialized():
+            # 2. On cherche tes secrets que tu viens de coller
+            if "GEE_SERVICE_ACCOUNT" in st.secrets:
+                creds = dict(st.secrets["GEE_SERVICE_ACCOUNT"])
+                
+                # Authentification avec la clé privée
+                auth = ee.ServiceAccountCredentials(
+                    creds['client_email'], 
+                    key_data=creds['private_key']
+                )
+                ee.Initialize(auth, project=creds['project_id'])
+                print("✅ GEE connecté avec succès sur le Cloud")
+            else:
+                # Mode local pour tes tests sur PC
+                ee.Initialize(project='barrages-project')
+                print("✅ GEE connecté en local")
+                
     except Exception as e:
-        # Si c'est déjà initialisé, on ne fait rien, sinon on affiche l'erreur
+        # Si une erreur survient, on l'affiche proprement
         if "already initialized" not in str(e).lower():
-            st.error(f"Erreur d'initialisation GEE : {e}")
-            raise e
+            st.error(f"Erreur d'authentification GEE : {e}")
