@@ -1,14 +1,15 @@
 import ee
+import streamlit as st
 
 def init_gee():
     try:
-        # REMPLACEZ 'votre-projet-id' par l'ID réel trouvé à l'étape 1
-        ee.Initialize(project='barrages-project')
-        print("✅ GEE initialisé avec succès !")
+        # Sur Streamlit Cloud → utilise les secrets
+        credentials = ee.ServiceAccountCredentials(
+            email=st.secrets["GEE_SERVICE_ACCOUNT"],
+            key_data=st.secrets["GEE_PRIVATE_KEY"],
+        )
+        ee.Initialize(credentials)
     except Exception as e:
-        # Si vous n'avez pas de projet fixe, cette ligne tente de récupérer le projet par défaut
-        try:
-            ee.Initialize() 
-        except:
-            print(f"❌ Erreur d'initialisation GEE : {e}")
-            raise e
+        st.error(f"❌ Erreur GEE : {e}")
+        st.stop()
+        
