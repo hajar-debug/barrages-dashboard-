@@ -1,0 +1,12 @@
+# Ouvre ton fichier JSON et cherche la ligne "private_key"
+# Copie TOUTE la valeur (les lignes entre BEGIN et END) et colle-la ici :
+key_du_json = """-----BEGIN PRIVATE KEY-----
+\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC968ebP9yO7KUp\n+DoCMhxbHCpXdG5QFBT6MJc/FlGqGOnSTVVNmKWTtX5w0x61U6nu6smG3xoQff9K\noCF4KXWpeJwr7jT0jW5wb3q6HN2Bi1xrwbmnfv8b2KKgT83Zy8JWXd1DE/8u3/78\nMngVsZMXtEeUIH5fn/feKoDGr7PAbKldCM7KHYK/ic5w9AQZpx5kwuSlruR83LGX\nqVEbyX9H0oC+bKL6AgEEjuz4vLcqDZGHUj71dEPmaWCRiOtsjpjhuRpGIp3tzl0a\nu7w9GK1G7cSM/bBC4LMbTxTjGXuhf6RUHpu+h04wP/LE8/JNNjVbexcKUR0UdGpu\nuZJNTI21AgMBAAECggEACU1VU+VjQ40pLh6mPrR0Hu1IpfXCBReQCyIFTRXQ2ac0\nj/RG35EArnT8VKvZLEdFAo/1ihl+0Lx5xs6u3PsQ3tmqsocis7CtWQHzeE6mIGxy\nPM/lVzlukXoBRcoAL9udm4vSOhvDtajLIntEAPIB3Zka9rvHB3QnGIwAjdq4uo2y\nUyrvurV4X5cBNpEejBYmb3m4ne/Zs2jRyu9xrCUqo+VDg2+/ofvZVBsJIafI6/k9\nZYhOulp0HAgdeTv42ukPjOUR7ytXE9ubpl2k8qWzdANWv2QzQe1MSiMrVwe7VYK+\n76Yra0+0sFNKyL8lEzecrTWnD22qVVW4KEh8U/N/uQKBgQDeTIg+ahXhWHmjaYUg\nn5Xcst3FGYsF9CiDmt+y3qE78hgSixjv3Ki/JwiCifIdZiVAuuhLoi1mlFTUlsVD\nIieq5BJ55tuSBwn4rAr4S5RkuQgXtCvsb1uAoiQ56PglNHv/3MPIK6qSHTViB6aE\n6x/pwCcB4juKRv8L6RhrAPQDzQKBgQDatqcvk6kXF9M7kL21YhlnJ8pb2RB4wVpy\nvZxvqarPGMc0b9M+2zjCeiFvtua75GTVXara7ZPUOSw9V4qG+7ZwkdlBrggRjgOW\n1OWabcKCW6f6lm3nClAOzxq4dGs55RUZaYd4JSwTUJr4GJeGdo/frO11hljxmHBF\ntkYj1zWZiQKBgDF3CC4TPxEotdBl74il2hwE9RIhr+zAOq+mK7bKkUgcg7zElOTy\nzd3TGrKpbWWbUBjKPlxuFvoncYTok7ZviDIfk/jqJNumk1JxPfOoJboP7jwQDGIN\nGWhTLApyy5zDw//YKPyGsurWcwWAPE6BX1WNO2DQ7XzEdYY59QQCb0nVAoGBAKVf\nytZsnkQ53ZyCew91V6PqMFZ2sL+947gyquC7t83T/HwnueEjPa2/Txz7fUfBEIVM\nx+22CjtD57GSScp69Z30igPhpXQwn4IjBGFacOLEjyUpLXyvDY3FB31FefZSwztt\n0eMEqGkKX8MMRTaE25DTXtGofgRfsTTk9/ANwBeRAoGABM9PUZFxyz3EstRBYuxz\nBSZdS/jHsxXSIp6495ul5KxmiuXxP5i97VIgHsqTDXOrNMAi8XLybuVa4Nb49OWW\nVgJH0oxvUIRWbHA9p9XMKIApmWiK/TC7Ywe5OFJ7bxlF0ZusEomPp4yWDnvxNzS5\n1vCdfh4nXS+ZIlplAMWK1H8=\n-----END PRIVATE KEY-----
+"""
+
+# Cette commande transforme les retours à la ligne en texte "\n"
+key_formattee = key_du_json.replace("\n", "\\n")
+
+print("--- COPIE LA LIGNE CI-DESSOUS ---")
+print(key_formattee)
+print("--------------------------------")

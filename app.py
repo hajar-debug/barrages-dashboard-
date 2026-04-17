@@ -163,40 +163,97 @@ if not df.empty:
         **💡 Usages :** {row.get('usage', '—')}
         """)
 
-    # ── Tabs ──────────────────────────────────────────────────────────────────
-    tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES", "⚠️ RISQUES", "📄 RAPPORT"])
+    # ── Tabs (Carte et Analyses) ──────────────────────────────────────────────────
+tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES", "⚠️ RISQUES", "📄 RAPPORT"])
 
-    with tab1:
-        from processing.maps import build_map
-        from streamlit_folium import st_folium
-        m = build_map(lat, lon, row, start_str, end_str, cloud_pct, show_ndwi, show_ndvi, show_rgb)
-        st_folium(m, width="100%", height=550, returned_objects=[])
+with tab1:
+    from processing.maps import build_map
+    from streamlit_folium import st_folium
+    # Correction de la hauteur pour un meilleur affichage
+    m = build_map(lat, lon, row, start_str, end_str, cloud_pct, show_ndwi, show_ndvi, show_rgb)
+    st_folium(m, width="stretch", height=550, returned_objects=[])
 
-    with tab2:
-        from processing.indices import get_ndwi_mean, get_ndvi_mean, water_surface, get_timeseries
-        with st.spinner("Calcul GEE..."):
-            ndwi = get_ndwi_mean(lat, lon, start_str, end_str, cloud_pct)
-            ndvi = get_ndvi_mean(lat, lon, start_str, end_str, cloud_pct)
-            water = water_surface(lat, lon, start_str, end_str, cloud_pct)
+with tab2:
+    from processing.indices import get_ndwi_mean, get_ndvi_mean, water_surface, get_timeseries
+    with st.spinner("Calcul GEE en cours..."):
+        ndwi = get_ndwi_mean(lat, lon, start_str, end_str, cloud_pct)
+        ndvi = get_ndvi_mean(lat, lon, start_str, end_str, cloud_pct)
+        water = water_surface(lat, lon, start_str, end_str, cloud_pct)
 
-        c1, c2, c3 = st.columns(3)
-        c1.metric("💧 NDWI", f"{ndwi:.3f}" if ndwi else "N/A")
-        c2.metric("🌿 NDVI", f"{ndvi:.3f}" if ndvi else "N/A")
-        c3.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("💧 NDWI", f"{ndwi:.3f}" if ndwi else "N/A")
+    c2.metric("🌿 NDVI", f"{ndvi:.3f}" if ndvi else "N/A")
+    c3.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
 
-        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
-        if ts is not None and not ts.empty:
-            import plotly.express as px
-            fig = px.line(ts, x="date", y=["NDWI", "NDVI"], template="plotly_dark")
-            st.plotly_chart(fig, use_container_width=True)
+    ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
+    if ts is not None and not ts.empty:
+        import plotly.express as px
+        fig = px.line(ts, x="date", y=["NDWI", "NDVI"], template="plotly_dark")
+        # Correction use_container_width pour Streamlit 2026
+        st.plotly_chart(fig, width="stretch")
 
-    with tab3:
-        from processing.analysis import compute_risk, generate_alerts
-        rl, rs = compute_risk(ndwi, ndvi)
-        al = generate_alerts(ndwi, ndvi, water)
-        st.subheader(f"État : {rl}")
-        st.progress(rs / 100)
-        for a in al: st.warning(a)
+with tab3:
+    from processing.analysis import compute_risk, generate_alerts
+    # On récupère les scores de risque
+    rl, rs = compute_risk(ndwi, ndvi)
+    al = generate_alerts(ndwi, ndvi, water)
+    
+    st.subheader(f"État du réservoir : {rl}")
+    st.progress(rs / 100)
+    for a in al: 
+        st.warning(a)
 
-    with tab4:
-        st.info("Module de rapport prêt pour l'exportation PDF.")
+with tab4:
+    st.markdown("### 📄 Génération du Rapport d'Analyse")
+    st.write("Ce rapport compile les données techniques et une interprétation experte.")
+
+    from report.report_generator import generate_pdf
+    from datetime import datetime
+
+    # --- 1. Interprétations automatiques pour ton Master ---
+    interpretation = ""
+    if ndwi is not None:
+        if ndwi > 0.2: 
+            interpretation += "✅ **État de l'eau** : Présence d'une nappe d'eau claire significative.\n\n"
+        elif ndwi > 0: 
+            interpretation += "⚠️ **État de l'eau** : Eau turbide ou faible profondeur (risque d'envasement).\n\n"
+        else: 
+            interpretation += "🚨 **Alerte** : Déficit hydrique sévère détecté.\n\n"
+    
+    if ndvi is not None:
+        if ndvi > 0.4: 
+            interpretation += "🌿 **Végétation** : Forte densité végétale (risque d'eutrophisation sur les berges).\n"
+        else: 
+            interpretation += "🍂 **Végétation** : Couverture végétale faible ou normale.\n"
+
+    # --- 2. Bouton de génération ---
+    if st.button("🏗️ Préparer le rapport PDF"):
+        with st.spinner("Rédaction du rapport..."):
+            pdf_bytes = generate_pdf(
+                barrage_name=choice,
+                row=row,
+                ndwi=ndwi,
+                ndvi=ndvi,
+                water=water,
+                risk_level=rl,
+                risk_score=rs,
+                alerts=al,
+                start=start_str,
+                end=end_str
+            )
+
+            st.success("✅ Rapport prêt !")
+            st.download_button(
+                label="📥 Télécharger le rapport (PDF)",
+                data=pdf_bytes,
+                file_name=f"Rapport_{choice}_{datetime.now().strftime('%d-%m-%y')}.pdf",
+                mime="application/pdf"
+            )
+
+    # --- 3. Affichage des analyses à l'écran ---
+    st.markdown("---")
+    st.subheader("💡 Interprétation Experte")
+    if interpretation:
+        st.info(interpretation)
+    else:
+        st.info("Lancez l'analyse dans l'onglet 📊 ANALYSES pour voir l'interprétation.")
