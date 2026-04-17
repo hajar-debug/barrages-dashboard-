@@ -122,3 +122,33 @@ def get_timeseries(lat, lon, start, end, cloud_pct):
             df['date'] = pd.to_datetime(df['date'])
         return df
     except: return None
+
+# À ajouter dans processing/indices.py
+
+def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
+    """Génère l'URL de la couche Sentinel-2 en vraies couleurs (RGB)"""
+    import ee
+    try:
+        point = ee.Geometry.Point([lon, lat]).buffer(5000).bounds()
+        
+        # Sélection des bandes B4 (Red), B3 (Green), B2 (Blue)
+        rgb = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+               .filterBounds(point)
+               .filterDate(start, end)
+               .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct))
+               .median()
+               .divide(10000)) # Normalisation pour Sentinel-2 SR
+
+        # Paramètres de visualisation pour un rendu naturel
+        viz = {
+            'bands': ['B4', 'B3', 'B2'],
+            'min': 0,
+            'max': 0.3,
+            'gamma': 1.4
+        }
+        
+        map_id = ee.data.getMapId({'image': rgb, 'visParams': viz})
+        return map_id['tile_fetcher'].url_format
+    except Exception as e:
+        print(f"Erreur RGB Tile: {e}")
+        return None
