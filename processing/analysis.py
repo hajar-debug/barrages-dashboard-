@@ -45,33 +45,31 @@ def compute_risk(ndwi, ndvi, ndti=None):
     return level, score
 
 
-def generate_alerts(ndwi, ndvi, water, ndti=None):
-    """Retourne une liste de messages d'alerte incluant la turbidité."""
-    alerts = []
+# Dans processing/analysis.py
 
-    # Alertes Eau (NDWI)
+def generate_alerts(ndwi, ndvi, water, ndti=None):
+    alerts = []
+    
+    # Alertes de Stress Hydrique (Sécheresse)
     if ndwi is not None:
         if ndwi < 0.05:
-            alerts.append("💧 NDWI critique (< 0.05) — Risque d'assèchement sévère.")
-        elif ndwi < 0.10:
-            alerts.append("💧 NDWI bas — Le niveau de la retenue est inférieur à la normale.")
+            alerts.append("🔴 **Alerte Sécheresse Critique** : Le retrait de la nappe d'eau est majeur. Risque d'arrêt des prises d'eau potable.")
+        elif ndwi < 0.15:
+            alerts.append("🟠 **Vigilance Hydrique** : Baisse significative du niveau de remplissage observée.")
 
-    # Alertes Turbidité (NDTI) - AJOUTÉ
+    # Alertes d'Envasement (Sédimentologie)
     if ndti is not None:
-        if ndti > 0.10:
-            alerts.append("🌫️ Turbidité élevée — Fort risque d'envasement de la retenue.")
+        if ndti > 0.15:
+            alerts.append("🔴 **Alerte Sédimentation** : Forte turbidité détectée. Risque d'envasement des vannes de fond et dégradation de la qualité de l'eau.")
         elif ndti > 0.05:
-            alerts.append("🌫️ Eau trouble — Sédiments en suspension détectés.")
+            alerts.append("🟡 **Avis de Turbidité** : Augmentation des matières en suspension. Possible apport solide suite à des précipitations.")
 
-    # Alertes Végétation (NDVI)
+    # Alertes du Bassin Versant (Érosion/Eutrophisation)
     if ndvi is not None:
-        if ndvi < 0.1:
-            alerts.append("🌿 NDVI très bas — Stress hydrique extrême du bassin versant.")
-
-    # Alertes Surface (Water)
-    if water is not None:
-        if water < 1.0:
-            alerts.append(f"📐 Surface réduite ({water:.2f} km²) — Seuil de sécurité atteint.")
+        if ndvi < 0.15:
+            alerts.append("⚠️ **Dégradation Couverture Végétale** : Risque accru d'érosion des sols vers la retenue lors des prochaines pluies.")
+        elif ndvi > 0.6:
+            alerts.append("🌿 **Risque d'Eutrophisation** : Prolifération végétale détectée pouvant réduire l'oxygène dissous dans l'eau.")
 
     # Alertes Combinées (Aide à la décision)
     if ndwi is not None and ndti is not None:

@@ -196,6 +196,24 @@ if not df.empty:
             import plotly.express as px
             fig = px.line(ts, x="date", y=["NDWI", "Turbidité"], template="plotly_dark")
             st.plotly_chart(fig, width="stretch")
+    st.markdown("---")
+    with st.expander("🔬 Méthodologie et Interprétation des Indices"):
+        st.write("""
+        ### 1. NDWI (Normalized Difference Water Index)
+        **Formule :** $(Green - NIR) / (Green + NIR)$  
+        * **Utilité :** Maximise la réflectance de l'eau en utilisant la bande verte et minimise la faible réflectance de l'eau dans le proche infrarouge.
+        * **Interprétation :** Valeurs > 0.2 indiquent de l'eau libre.
+
+        ### 2. NDTI (Normalized Difference Turbidity Index)
+        **Formule :** $(Red - Green) / (Red + Green)$  
+        * **Utilité :** Mesure la concentration de sédiments en suspension.
+        * **Interprétation :** Des valeurs positives indiquent une eau chargée (trouble), souvent liée à l'envasement.
+
+        ### 3. NDVI (Normalized Difference Vegetation Index)
+        **Formule :** $(NIR - Red) / (NIR + Red)$  
+        * **Utilité :** Évalue la vigueur de la végétation autour du barrage.
+        * **Interprétation :** Un NDVI faible (< 0.2) signifie un sol nu ou un stress hydrique.
+        """)
 
     with tab3:
         from processing.analysis import compute_risk, generate_alerts
