@@ -180,22 +180,26 @@ if not df.empty:
 
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries
-        import plotly.express as px # Import ajouté ici pour le graphique
+        import plotly.express as px
+        
         with st.spinner("Calcul GEE en cours..."):
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
             water = water_surface(lat, lon, start_str, end_str, cloud_pct)
 
+        # Les métriques s'affichent d'abord
         c1, c2, c3, c4 = st.columns(4) 
         c1.metric("💧 NDWI", f"{ndwi:.3f}" if ndwi else "N/A")
         c2.metric("🌫️ NDTI", f"{ndti:.3f}" if ndti else "N/A") 
         c3.metric("🌿 NDVI", f"{ndvi:.3f}" if ndvi else "N/A")
         c4.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
-    st.markdown("### 📈 Évolution Temporelle")
-       # --- BLOC GRAPHIQUE ---
+
+        st.markdown("### 📈 Évolution Temporelle")
+
+        # --- BLOC GRAPHIQUE (Réaligné strictement sous tab2) ---
         ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
+        fig = None 
         
-        # On définit fig ici pour qu'il soit accessible globalement dans le script
         if ts is not None and not ts.empty:
             fig = px.line(
                 ts, 
@@ -207,16 +211,13 @@ if not df.empty:
             fig.update_layout(
                 xaxis_title="Date d'acquisition",
                 yaxis_title="Valeur de l'indice",
-                legend_title="Indices",
                 hovermode="x unified"
             )
-            # Affichage forcé dans Streamlit
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("📊 Aucune donnée historique disponible pour cette période.")
-    st.markdown("---")
-    with st.expander("🔬 Méthodologie et Interprétation des Indices"):
-        st.write("""
+        with st.expander("🔬 Méthodologie et Interprétation des Indices"):
+            st.write("""
         ### 1. NDWI (Normalized Difference Water Index)
         **Formule :** $(Green - NIR) / (Green + NIR)$  
         * **Utilité :** Maximise la réflectance de l'eau.
