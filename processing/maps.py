@@ -1,6 +1,6 @@
 import folium
 from folium import plugins
-import ee  # <--- IL MANQUE CETTE LIGNE
+import ee  
 import geemap.foliumap as geemap
 
 def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, show_ndti):

@@ -176,7 +176,8 @@ if not df.empty:
             lat, lon, row, start_str, end_str, 
             cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti
         )
-        st_folium(m, width="stretch", height=550, returned_objects=[]) 
+        st_folium(m, width='stretch') 
+        
 
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries
