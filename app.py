@@ -146,7 +146,7 @@ if not df.empty:
     <div class="expert-note">
         <span style="color:#00c9ff; font-weight:bold;">💡 ANALYSE STRATÉGIQUE</span><br>
         {fact}<br>
-        <small style="color:#6b7fa3;">Mis en service en {row['Annee']} | Capacité : {row['Capacite']} Mm³ | Usage : {row['Usage']}</small>
+        <small style="color:#6b7fa3;">Mis en service en {row['annee']} | Capacité : {row['capacite']} Mm³ | Usage : {row['usage']}</small>
     </div>
     """, unsafe_allow_html=True)    
 # ── Configuration du Buffer Dynamique ──
