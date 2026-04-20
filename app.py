@@ -100,6 +100,11 @@ with st.sidebar:
         st.markdown('<div class="section-title">🏞 Sélection</div>', unsafe_allow_html=True)
         barrage_list = df["barrage"].dropna().unique().tolist()
         choice = st.selectbox("Choisissez un barrage :", barrage_list, label_visibility="collapsed")
+    
+        # On donne une valeur par défaut pour que Python ne dise plus "not defined"
+        ndwi, ndvi, ndti = None, None, None
+        surface_actuelle = 0
+        interpretation = ""
         # Ajoute ces deux lignes ici :
         row = df[df["barrage"] == choice].iloc[0]
         lat, lon = float(row["lat"]), float(row["lon"])
@@ -212,10 +217,22 @@ if not df.empty:
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries, get_water_surface_area, get_climate_data
         
+        # --- INITIALISATION ---
+        ndwi, ndvi, ndti = None, None, None
+        
         with st.spinner("Calcul GEE en cours..."):
+            # 1. Calcul des indices
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=5000)
+            
+            # Extraction sécurisée des résultats
+            if metrics and isinstance(metrics, dict):
+                ndwi = metrics.get('ndwi')
+                ndvi = metrics.get('ndvi')
+                ndti = metrics.get('ndti')
+            
+            # 2. Calcul de la surface (UNE SEULE FOIS avec le radius)
+            # Supprime la deuxième ligne "water =" qui n'avait pas le radius
             water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=5000)
-            water = water_surface(lat, lon, start_str, end_str, cloud_pct)
 
         # Nouveau design des colonnes de métriques
         c1, c2, c3, c4 = st.columns(4) 
