@@ -90,10 +90,11 @@ def get_metrics(lat, lon, start, end, cloud_pct, radius=5000):
         }
     except: return {"ndwi": None, "ndvi": None, "ndti": None}
 
-def water_surface(lat, lon, start, end, cloud_pct):
+def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
     """Calcule la surface de la retenue en km²."""
     try:
-        roi = ee.Geometry.Point([lon, lat]).buffer(8000).bounds()
+        # Utilise la variable radius ici si tu veux qu'elle soit dynamique
+        roi = ee.Geometry.Point([lon, lat]).buffer(radius).bounds() 
         img = get_base_collection(lat, lon, start, end, cloud_pct)
         ndwi = img.normalizedDifference(['B3', 'B8'])
         water_mask = ndwi.gt(0.1)
