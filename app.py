@@ -304,7 +304,7 @@ if not df.empty:
                 st.warning("Turbide")
             else:
                 st.warning("Indisponible")
-      with h3:
+        with h3:
             st.write("**🌿 Berges**")
             # On vérifie si ndvi existe AVANT de comparer
             if ndvi is not None:
