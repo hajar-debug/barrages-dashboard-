@@ -218,5 +218,5 @@ def get_climate_data(lat, lon, date_str):
     
     temp_img = dataset.select('temperature_2m').mean()
     # Conversion Kelvin en Celsius
-    temp_c = temp_img.reduceRegion(ee.Reducer.first(), poi, 1000).get('temperature_2m')
+    temp_c = temp_img.reduceRegion(ee.Reducer.first(), roi, 1000).get('temperature_2m')
     return float(temp_c.getInfo()) - 273.15
