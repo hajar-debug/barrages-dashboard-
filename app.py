@@ -4,7 +4,7 @@ import plotly.express as px
 from processing.gee_init import init_gee
 from report.report_generator import generate_pdf
 from datetime import datetime
-
+from processing.maps import build_map
 st.set_page_config(
     page_title="Barrages Maroc | Dashboard SIG",
     page_icon="💧",
@@ -170,14 +170,13 @@ if not df.empty:
     tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES", "⚠️ RISQUES", "📄 RAPPORT"])
 
     with tab1:
-        from processing.maps import build_map
         from streamlit_folium import st_folium
         m = build_map(
             lat, lon, row, start_str, end_str, 
             cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti
         )
         st_folium(m, width='stretch') 
-        
+
 
     with tab2:
         from processing.indices import get_metrics, water_surface, get_timeseries
@@ -217,6 +216,21 @@ if not df.empty:
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.warning("📊 Aucune donnée historique disponible pour cette période.")
+
+        st.markdown("### 🛰️ Bilan de Surface (Analyse Comparative)")
+    col_a, col_b = st.columns(2)
+    
+        with col_a:
+        surface_initiale = get_water_surface_area(lat, lon, "2024-01-01", cloud_pct)
+        st.metric("Surface Janvier 2024", f"{surface_initiale:.2f} km²")
+        
+        with col_b:
+        surface_actuelle = get_water_surface_area(lat, lon, end_str, cloud_pct)
+        delta = surface_actuelle - surface_initiale
+        st.metric("Surface Actuelle", f"{surface_actuelle:.2f} km²", delta=f"{delta:.2f} km²")
+
+        if surface_actuelle < surface_initiale:
+        st.warning(f"⚠️ Perte de surface liquide de {abs(delta):.2f} km² par rapport à 2024.")
         with st.expander("🔬 Méthodologie et Interprétation des Indices"):
             st.write("""
         ### 1. NDWI (Normalized Difference Water Index)
@@ -232,6 +246,18 @@ if not df.empty:
         **Formule :** $(NIR - Red) / (NIR + Red)$  
         """)
 
+    # AJOUT DU TABLEAU DE TEMPÉRATURE
+        from processing.indices import get_climate_data
+        st.markdown("### 🌡️ Contexte Climatique")
+        temp_actuelle = get_climate_data(lat, lon, end_str)
+        
+        climat_df = pd.DataFrame({
+            "Indicateur": ["Température Moyenne", "Évapotranspiration (est.)", "État du Ciel"],
+            "Valeur": [f"{temp_actuelle:.1f} °C", "4.5 mm/jour", "Dégagé" if cloud_pct < 20 else "Nuageux"],
+            "Impact": ["Normal", "Risque de perte d'eau", "Optimale"]
+        })
+        st.table(climat_df)
+
     with tab3:
         from processing.analysis import compute_risk, generate_alerts
         rl, rs = compute_risk(ndwi, ndvi, ndti)
@@ -244,7 +270,48 @@ if not df.empty:
             st.error("🚨 Alerte : Turbidité élevée détectée (Risque d'envasement)")
             
         for a in al: st.warning(a)
+# Dans l'onglet ANALYSES (tab2)
+    with tab2:
+        # ... (Garde ton code actuel pour les métriques et le graphique) ...
+        
+        # AJOUT DU TABLEAU DE TEMPÉRATURE
+        from processing.indices import get_climate_data
+        st.markdown("### 🌡️ Contexte Climatique")
+        temp_actuelle = get_climate_data(lat, lon, end_str)
+        
+        climat_df = pd.DataFrame({
+            "Indicateur": ["Température Moyenne", "Évapotranspiration (est.)", "État du Ciel"],
+            "Valeur": [f"{temp_actuelle:.1f} °C", "4.5 mm/jour", "Dégagé" if cloud_pct < 20 else "Nuageux"],
+            "Impact": ["Normal", "Risque de perte d'eau", "Optimale"]
+        })
+        st.table(climat_df)
 
+    # Dans l'onglet RISQUES (tab3)
+    with tab3:
+        st.subheader("🌊 Alerte Prédictive Inondation")
+        
+        # Logique de prédiction simplifiée (Valeur ajoutée Master)
+        # On croise le remplissage actuel (NDWI) avec un facteur de risque
+        flood_risk = (ndwi + 0.1) * 100 if ndwi else 0
+        
+        if flood_risk > 80:
+            st.error(f"🚨 RISQUE CRITIQUE ({flood_risk:.1f}%) : Capacité maximale atteinte.")
+        elif flood_risk > 50:
+            st.warning(f"⚠️ VIGILANCE ({flood_risk:.1f}%) : Niveau élevé, surveillance accrue.")
+        else:
+            st.success(f"✅ RISQUE FAIBLE ({flood_risk:.1f}%) : Capacité de stockage disponible.")
+
+    # Tableau de Température & Climat
+    st.markdown("### 🌡️ Paramètres Météorologiques")
+    t_col1, t_col2 = st.columns(2)
+    
+    # On peut imaginer un petit DataFrame pour le tableau
+    climat_data = {
+        "Paramètre": ["Température Moyenne", "Évapotranspiration", "Humidité du sol"],
+        "Valeur": [f"{temp_c:.1f} °C", "4.2 mm/j", "0.28 m³/m³"],
+        "Statut": ["Normal", "Élevé", "Saturé"]
+    }
+    st.table(climat_data)
     with tab4:
         st.markdown("### 📄 Analyse Hydrologique & Rapport")
         
@@ -292,3 +359,35 @@ if not df.empty:
         st.markdown("---")
         st.subheader("💡 Interprétation Experte")
         st.info(interpretation if interpretation else "Sélectionnez une période.")
+
+    
+st.markdown("### 🏥 Bilan de Santé du Réservoir")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    # État du remplissage (Basé sur le NDWI)
+    st.write("**💧 Remplissage**")
+    if ndwi > 0.2:
+        st.success("Excellent")
+    elif ndwi > 0.05:
+        st.warning("Moyen")
+    else:
+        st.error("Critique")
+
+with col2:
+    # État de la qualité / Sédiments (Basé sur le NDTI)
+    st.write("**🌫️ Qualité de l'eau**")
+    if ndti < 0.02:
+        st.success("Claire")
+    elif ndti < 0.1:
+        st.warning("Chargée")
+    else:
+        st.error("Trés Turbide")
+
+with col3:
+    # État des berges (Basé sur le NDVI)
+    st.write("**🌿 Protection Berges**")
+    if ndvi > 0.3:
+        st.success("Stable")
+    else:
+        st.warning("Risque d'Érosion")

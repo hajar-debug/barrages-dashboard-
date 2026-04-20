@@ -181,3 +181,41 @@ def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
     except Exception as e:
         print(f"Erreur RGB Tile: {e}")
         return None
+        
+def get_water_surface_area(lat, lon, date, cloud):
+    roi = ee.Geometry.Point([lon, lat]).buffer(5000)
+    img = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
+            .filterBounds(roi) \
+            .filterDate(ee.Date(date).advance(-1, 'month'), date) \
+            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud)) \
+            .median()
+
+    # Calcul du MNDWI (Green et SWIR)
+    mndwi = img.normalizedDifference(['B3', 'B11']).rename('MNDWI')
+    
+    # Seuil pour isoler l'eau (généralement 0)
+    water_mask = mndwi.gt(0)
+    
+    # Calcul de la surface en km²
+    stats = water_mask.multiply(ee.Image.pixelArea()).reduceRegion(
+        reducer=ee.Reducer.sum(),
+        geometry=roi,
+        scale=10,
+        maxPixels=1e9
+    )
+    
+    area_m2 = stats.get('MNDWI')
+    return ee.Number(area_m2).divide(1e6).getInfo() # Retourne des km²
+def get_climate_data(lat, lon, date_str):
+    # Point de mesure
+    poi = ee.Geometry.Point([lon, lat])
+    # Collection ERA5-Land (Température à 2m)
+    dataset = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY") \
+                .filterBounds(poi) \
+                .filterDate(ee.Date(date_str).advance(-7, 'day'), date_str)
+    
+    temp_img = dataset.select('temperature_2m').mean()
+    # Conversion Kelvin en Celsius
+    temp_c = temp_img.reduceRegion(ee.Reducer.first(), poi, 1000).get('temperature_2m')
+    return float(temp_c.getInfo()) - 273.15
+    
