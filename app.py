@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from processing.gee_init import init_gee
 from report.report_generator import generate_pdf
 from datetime import datetime
@@ -16,62 +17,54 @@ st.set_page_config(
 # ── CSS Pro ──────────────────────────────
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Syne:wght@700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Inter:wght@300;400;600&display=swap');
 
-    /* Fond global et typographie */
+    /* Fond global avec dégradé subtil */
     [data-testid="stAppViewContainer"] {
-        background-color: #05070a;
+        background-color: #0b0f19;
         background-image: radial-gradient(circle at 2px 2px, #1a2235 1px, transparent 0);
         background-size: 40px 40px;
     }
 
-    .stApp {
-        font-family: 'Inter', sans-serif;
+    /* Header Design */
+    .dash-title {
+        font-family: 'Syne', sans-serif;
+        font-size: 2.8rem;
+        font-weight: 800;
+        background: linear-gradient(90deg, #00c9ff, #ffffff);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
     }
 
-    /* Cartes de métriques améliorées */
-    [data-testid="metric-container"] {
-        background: rgba(26, 34, 53, 0.6);
-        border: 1px solid rgba(0, 201, 255, 0.2);
-        border-radius: 15px;
+    /* Note d'Expert (Répliques) */
+    .expert-note {
+        background: linear-gradient(90deg, rgba(0, 201, 255, 0.1), transparent);
+        border-left: 5px solid #00c9ff;
         padding: 20px;
+        border-radius: 0 15px 15px 0;
+        margin: 20px 0;
+    }
+
+    /* Cartes de métriques Style Glassmorphism */
+    [data-testid="metric-container"] {
+        background: rgba(23, 30, 48, 0.7) !important;
+        border: 1px solid rgba(0, 201, 255, 0.2) !important;
+        border-radius: 12px !important;
         backdrop-filter: blur(10px);
-        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        transition: transform 0.3s ease;
-    }
-    
-    [data-testid="metric-container"]:hover {
-        transform: translateY(-5px);
-        border-color: #00c9ff;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
     }
 
-    /* Style des Onglets (Tabs) */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 8px;
-        background-color: transparent;
-    }
-
-    .stTabs [data-baseweb="tab"] {
-        height: 45px;
-        background-color: #111827;
-        border-radius: 8px 8px 0px 0px;
-        color: white;
-        border: 1px solid #1e3a5f;
-        padding: 0 20px;
-    }
-
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(90deg, #00c9ff, #0066ff) !important;
-        border: none !important;
-    }
-
-    /* Sidebar élégante */
-    [data-testid="stSidebar"] {
-        border-right: 1px solid rgba(0, 201, 255, 0.1);
+    .section-title {
+        font-family: 'Syne', sans-serif;
+        font-size: 0.8rem;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        color: #00c9ff;
+        margin: 25px 0 10px 0;
+        border-bottom: 1px solid rgba(0, 201, 255, 0.2);
     }
 </style>
 """, unsafe_allow_html=True)
-
 # ── Init GEE ──
 try:
     init_gee()
@@ -90,7 +83,15 @@ def load_barrages():
         return pd.DataFrame()
 
 df = load_barrages()
-
+# ── DICTIONNAIRE DE RÉPLIQUES (SAVOIR EXPERT) ──
+expert_facts = {
+    "AL WAHDA": "Deuxième plus grand barrage d'Afrique, pilier de la régulation du Sebou.",
+    "OUED EL MAKHAZINE": "Infrastructure stratégique pour la sécurité alimentaire du Gharb.",
+    "S.M.B ABDELLAH": "Garant de l'approvisionnement en eau potable de l'axe Rabat-Casablanca.",
+    "DAR KHROUFA": "Ouvrage de nouvelle génération pour le développement agricole du Loukkos.",
+    "BIN EL OUIDANE": "Monument de l'hydroélectricité marocaine dans le Haut Atlas.",
+    "MOULAY ABDELLAH": "Ressource vitale pour le stress hydrique de la région Souss-Massa.",
+    "SIDI EL MAHJOUB": "Point d'eau crucial pour la résilience des zones arides du Sud."
 # ── Sidebar ──
 with st.sidebar:
     st.markdown("""
@@ -105,19 +106,73 @@ with st.sidebar:
         barrage_list = df["barrage"].dropna().unique().tolist()
         choice = st.selectbox("Choisissez un barrage :", barrage_list, label_visibility="collapsed")
 
+# --- MINI-CARTE DE SITUATION (SAHARA INCLUS) ---
+        st.markdown('<div class="section-title">📍 Situation Nationale</div>', unsafe_allow_html=True)
+        fig_loc = go.Figure(go.Scattermapbox(
+            lat=[lat], lon=[lon],
+            mode='markers',
+            marker=go.scattermapbox.Marker(size=12, color='#c1272d'),
+            text=[choice]
+        ))
+        fig_loc.update_layout(
+            mapbox_style="carto-darkmatter",
+            mapbox=dict(center=dict(lat=28.5, lon=-9.5), zoom=3.5),
+            margin={"r":0,"t":0,"l":0,"b":0}, height=250,
+            paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+        )
+        st.plotly_chart(fig_loc, use_container_width=True, config={'displayModeBar': False})
+
         st.markdown('<div class="section-title">📅 Période</div>', unsafe_allow_html=True)
         start_date = st.date_input("Début", value=pd.to_datetime("2020-01-01"))
         end_date = st.date_input("Fin", value=pd.to_datetime("2026-04-17"))
 
         st.markdown('<div class="section-title">☁️ Filtre nuages</div>', unsafe_allow_html=True)
-        cloud_pct = st.slider("% nuages max", 0, 50, 20)
+        cloud_pct = st.slider("% nuages max", 0, 100, 20)
 
         st.markdown('<div class="section-title">🗺 Couches carte</div>', unsafe_allow_html=True)
         show_ndwi  = st.checkbox("💧 NDWI (Eau)", value=True)
         show_ndti  = st.checkbox("🌫️ NDTI (Turbidité)", value=True)
         show_ndvi  = st.checkbox("🌿 NDVI (Végétation)", value=True)
         show_rgb   = st.checkbox("📷 Satellite RGB", value=False)
+# ── MAIN INTERFACE ──
+    if not df.empty:
+    start_str = start_date.strftime("%Y-%m-%d")
+    end_str = end_date.strftime("%Y-%m-%d")
+    
+    # Header Expert
+    st.markdown(f"<div class='dash-title'>Barrage {choice}</div>", unsafe_allow_html=True)
+    st.markdown(f"**Bassin Versant :** {row['Bassin']} | **Province :** {row['nom_provin']}")
 
+    # --- AFFICHAGE DE LA RÉPLIQUE ---
+    fact = expert_facts.get(choice.upper(), "Infrastructure clé pour la stratégie nationale de l'eau.")
+    st.markdown(f"""
+    <div class="expert-note">
+        <span style="color:#00c9ff; font-weight:bold;">💡 ANALYSE STRATÉGIQUE</span><br>
+        {fact}<br>
+        <small style="color:#6b7fa3;">Mis en service en {row['Annee']} | Capacité : {row['Capacite']} Mm³ | Usage : {row['Usage']}</small>
+    </div>
+    """, unsafe_allow_html=True)    
+import plotly.graph_objects as go
+
+     with st.sidebar:
+    st.markdown('<div class="section-title">🇲🇦 Situation Nationale</div>', unsafe_allow_html=True)
+    
+    # Carte du Maroc avec Sahara complet
+    fig_loc = go.Figure(go.Scattermapbox(
+        lat=[lat], lon=[lon],
+        mode='markers',
+        marker=go.scattermapbox.Marker(size=14, color='#c1272d', symbol='marker'),
+        text=[choice],
+        hoverinfo='text'
+    ))
+
+    fig_loc.update_layout(
+        mapbox_style="carto-darkmatter",
+        mapbox=dict(center=dict(lat=28.5, lon=-9.5), zoom=3.8), # Centrage national
+        margin={"r":0,"t":0,"l":0,"b":0}, height=250,
+        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_loc, use_container_width=True, config={'displayModeBar': False})
 # ── Configuration du Buffer Dynamique ──
 BUFFER_CONFIG = {
     "Al Wahda": 15000,
@@ -168,7 +223,7 @@ if not df.empty:
         """)
 
     # ── Tabs ──
-    tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES", "⚠️ RISQUES", "📄 RAPPORT"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES SPECTRALES", "⚠️ RISQUES", "📄 RAPPORT"])
 
     with tab1:
         from streamlit_folium import st_folium
