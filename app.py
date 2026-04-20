@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ── CSS Pro (Gardé tel quel) ──────────────────────────────
+# ── CSS Pro ──────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
@@ -38,12 +38,6 @@ html, body, [class*="css"] {
 section[data-testid="stSidebar"] {
     background: linear-gradient(180deg, #0d1526 0%, #0a0e1a 100%);
     border-right: 1px solid var(--border);
-}
-
-[data-testid="stSidebar"] .stCheckbox label p {
-    color: white !important;
-    font-weight: 500 !important;
-    font-size: 0.9rem !important;
 }
 
 .dash-title {
@@ -130,6 +124,18 @@ with st.sidebar:
         show_ndvi  = st.checkbox("🌿 NDVI (Végétation)", value=True)
         show_rgb   = st.checkbox("📷 Satellite RGB", value=False)
 
+# ── Configuration du Buffer Dynamique ──
+BUFFER_CONFIG = {
+    "Al Wahda": 15000,
+    "Oued El Makhazine": 15000,
+    "Dar Khroufa": 7000,
+    "S.M.B Abdellah": 7000,
+    "Moulay Abdellah": 5000,
+    "Sidi El Mahjoub": 3000
+}
+DEFAULT_BUFFER = 5000
+current_radius = BUFFER_CONFIG.get(choice, DEFAULT_BUFFER)
+
 # ── Extraction données ──
 if not df.empty:
     row = df[df["barrage"] == choice].iloc[0]
@@ -143,7 +149,7 @@ if not df.empty:
             <div class='dash-title'>سد {row.get('barrage', choice)}</div>
             <div class='dash-sub'>{row.get('nom_region','—')} · {row.get('nom_provin','—')} · {row.get('nom_commun','—')}</div>
         </div>
-        <div style='color:var(--muted); font-size:0.8rem;'>{lat:.4f}°N | {lon:.4f}°E</div>
+        <div style='color:var(--muted); font-size:0.8rem;'>{lat:.4f}°N | {lon:.4f}°E | ROI: {current_radius/1000}km</div>
     </div>
     """, unsafe_allow_html=True)
     st.markdown("---")
@@ -174,7 +180,7 @@ if not df.empty:
         from streamlit_folium import st_folium
         m = build_map(
             lat, lon, row, start_str, end_str, 
-            cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti
+            cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=current_radius
         )
         st_folium(m, width='stretch') 
 
@@ -182,9 +188,9 @@ if not df.empty:
         from processing.indices import get_metrics, water_surface, get_timeseries, get_water_surface_area, get_climate_data
         
         with st.spinner("Calcul GEE en cours..."):
-            metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
+            metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
-            water = water_surface(lat, lon, start_str, end_str, cloud_pct)
+            water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
 
         c1, c2, c3, c4 = st.columns(4) 
         c1.metric("💧 NDWI", f"{ndwi:.3f}" if ndwi else "N/A")
@@ -193,7 +199,7 @@ if not df.empty:
         c4.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
 
         st.markdown("### 📈 Évolution Temporelle")
-        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
+        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
         fig = None 
         
         if ts is not None and not ts.empty:
@@ -212,7 +218,7 @@ if not df.empty:
         col_a, col_b = st.columns(2)
         
         with col_a:
-            surface_initiale = get_water_surface_area(lat, lon, "2020-01-01", cloud_pct)
+            surface_initiale = get_water_surface_area(lat, lon, "2020-01-01", cloud_pct, radius=current_radius)
             st.metric("Surface Janvier 2020", f"{surface_initiale:.2f} km²" if surface_initiale else "N/A")
         
         with col_b:
@@ -221,7 +227,7 @@ if not df.empty:
             st.metric("Surface Actuelle", f"{surface_actuelle:.2f} km²", delta=f"{delta:.2f} km²")
 
         if surface_actuelle < (surface_initiale if surface_initiale else 0):
-            st.warning(f"⚠️ Perte de surface liquide de {abs(delta):.2f} km² par rapport à 2024.")
+            st.warning(f"⚠️ Perte de surface liquide de {abs(delta):.2f} km² par rapport à 2020.")
 
         st.markdown("### 🌡️ Contexte Climatique")
         temp_actuelle = get_climate_data(lat, lon, end_str)
@@ -266,8 +272,6 @@ if not df.empty:
 
     with tab4:
         st.markdown("### 📄 Analyse Hydrologique & Rapport")
-        
-        # Logique d'interprétation dynamique
         interpretation = ""
         if ndwi is not None:
             if ndwi > 0.15: 
@@ -279,33 +283,20 @@ if not df.empty:
 
         if st.button("🏗️ Préparer le rapport PDF"):
             with st.spinner("Génération..."):
-                # Génération du rapport
                 pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
-                
-                # --- CORRECTION ICI ---
-                # Si c'est un objet FPDF, on récupère les bytes avec output()
-                # Si c'est déjà des bytes, on garde tel quel
                 try:
                     if hasattr(pdf_output, 'output'):
-                        pdf_bytes = pdf_output.output(dest='S') # 'S' pour String/Bytes
+                        pdf_bytes = pdf_output.output(dest='S')
                     elif isinstance(pdf_output, str):
                         pdf_bytes = pdf_output.encode('latin-1')
                     else:
                         pdf_bytes = pdf_output
                 except Exception as e:
-                    st.error(f"Erreur de conversion PDF : {e}")
+                    st.error(f"Erreur conversion : {e}")
                     pdf_bytes = None
-                # -----------------------
 
                 if pdf_bytes:
                     st.success("✅ Rapport prêt !")
-                    st.download_button(
-                        label="📥 Télécharger PDF",
-                        data=pdf_bytes,
-                        file_name=f"Rapport_{choice}.pdf",
-                        mime="application/pdf"
-                    )
+                    st.download_button(label="📥 Télécharger PDF", data=pdf_bytes, file_name=f"Rapport_{choice}.pdf", mime="application/pdf")
         
         st.info(interpretation if interpretation else "Sélectionnez une période.")
-
-# ── Fin du Script ──
