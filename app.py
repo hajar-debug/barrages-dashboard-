@@ -348,30 +348,25 @@ if not df.empty:
             else:
                 interpretation += "🚨 **Alerte** : Sécheresse critique.\n\n"
 
-       if st.button("🏗️ Préparer le rapport PDF"):
-    with st.spinner("Génération..."):
-        try:
-            # Génération du PDF
-            pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
-            
-            # Conversion sécurisée en format binaire (bytes)
-            if hasattr(pdf_output, 'output'):
-                # Pour FPDF : dest='S' renvoie une chaîne qu'on encode en latin-1
-                pdf_bytes = pdf_output.output(dest='S').encode('latin-1')
-            elif isinstance(pdf_output, (bytearray, str)):
-                # Si c'est déjà du texte ou un bytearray, on convertit
-                pdf_bytes = bytes(pdf_output) if isinstance(pdf_output, bytearray) else pdf_output.encode('latin-1')
-            else:
-                pdf_bytes = pdf_output
-            
-            # Stockage en session pour éviter de perdre le PDF au prochain clic
-            st.session_state['pdf_ready'] = pdf_bytes
-            
-        except Exception as e:
-            st.error(f"Erreur lors de la génération : {e}")
-            st.session_state['pdf_ready'] = None
+       # --- SECTION RAPPORT PDF (Bien alignée sous tab2) ---
+        st.markdown("---")
+        if st.button("🏗️ Préparer le rapport PDF"):
+            with st.spinner("Génération..."):
+                try:
+                    pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
+                    
+                    if hasattr(pdf_output, 'output'):
+                        pdf_bytes = pdf_output.output(dest='S').encode('latin-1')
+                    elif isinstance(pdf_output, (bytearray, str)):
+                        pdf_bytes = bytes(pdf_output) if isinstance(pdf_output, bytearray) else pdf_output.encode('latin-1')
+                    else:
+                        pdf_bytes = pdf_output
+                    
+                    st.session_state['pdf_ready'] = pdf_bytes
+                except Exception as e:
+                    st.error(f"Erreur lors de la génération : {e}")
+                    st.session_state['pdf_ready'] = None
 
-# Affichage du bouton de téléchargement si le PDF est prêt
         if st.session_state.get('pdf_ready'):
             st.download_button(
                 label="📥 Télécharger le Rapport PDF",
@@ -380,4 +375,4 @@ if not df.empty:
                 mime="application/pdf"
             )
         else:
-            st.warning("⚠️ Le rapport PDF n'est pas encore généré ou les données sont absentes.")
+            st.warning("⚠️ Le rapport PDF n'est pas encore prêt.")
