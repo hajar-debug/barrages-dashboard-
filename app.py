@@ -213,8 +213,8 @@ if not df.empty:
         from processing.indices import get_metrics, water_surface, get_timeseries, get_water_surface_area, get_climate_data
         
         with st.spinner("Calcul GEE en cours..."):
-            metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
-            ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
+            metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=5000)
+            water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=5000)
             water = water_surface(lat, lon, start_str, end_str, cloud_pct)
 
         # Nouveau design des colonnes de métriques
@@ -228,7 +228,7 @@ if not df.empty:
         with c4:
             st.metric(label="📐 Surface Estimée", value=f"{water:.2f} km²" if water else "N/A")
         st.markdown("### 📈 Évolution Temporelle")
-        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
+        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=5000)
         fig = None 
         
         if ts is not None and not ts.empty:
