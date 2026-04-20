@@ -130,7 +130,7 @@ with st.sidebar:
         end_date = st.date_input("Fin", value=pd.to_datetime("2026-04-17"))
 
         st.markdown('<div class="section-title">☁️ Filtre nuages</div>', unsafe_allow_html=True)
-        cloud_pct = st.slider("% nuages max", 0, 100, 20)
+        cloud_pct = st.slider("% nuages max", 0, 50, 20)
 
         st.markdown('<div class="section-title">🗺 Couches carte</div>', unsafe_allow_html=True)
         show_ndwi  = st.checkbox("💧 NDWI (Eau)", value=True)
@@ -139,8 +139,8 @@ with st.sidebar:
         show_rgb   = st.checkbox("📷 Satellite RGB", value=False)
 # ── MAIN INTERFACE ──
 if not df.empty:
-    start_str = start_date.strftime("2020-01-01") # <-- Correct !
-    end_str = end_date.strftime("2026-04-17")
+    start_str = start_date.strftime("%Y-%m-%d") # On utilise le format année-mois-jour
+    end_str = end_date.strftime("%Y-%m-%d")
     
     # Header Expert
     st.markdown(f"<div class='dash-title'>Barrage {choice}</div>", unsafe_allow_html=True)
