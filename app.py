@@ -71,19 +71,14 @@ try:
 except Exception as e:
     st.error(f"Erreur d'initialisation Google Earth Engine : {e}")
 
-# ── Load Data ──
+# ── LOAD DATA ──
 @st.cache_data
 def load_barrages():
-    try:
-        df = pd.read_csv("Data/barrages.csv", encoding='utf-8')
-        df.columns = df.columns.str.strip().str.lower()
-        return df
-    except Exception as e:
-        st.error(f"Erreur chargement CSV : {e}")
-        return pd.DataFrame()
+    df = pd.read_csv("Data/barrages.csv")
+    df.columns = df.columns.str.strip() 
+    return df  # <--- VÉRIFIE BIEN QUE CETTE LIGNE EST OK
 
-df = load_barrages()
-# ── DICTIONNAIRE DE RÉPLIQUES (SAVOIR EXPERT) ──
+# ── DICTIONNAIRE DE RÉPLIQUES (LIGNE 87) ──
 expert_facts = {
     "AL WAHDA": "Deuxième plus grand barrage d'Afrique, pilier de la régulation du Sebou.",
     "OUED EL MAKHAZINE": "Infrastructure stratégique pour la sécurité alimentaire du Gharb.",
@@ -92,6 +87,7 @@ expert_facts = {
     "BIN EL OUIDANE": "Monument de l'hydroélectricité marocaine dans le Haut Atlas.",
     "MOULAY ABDELLAH": "Ressource vitale pour le stress hydrique de la région Souss-Massa.",
     "SIDI EL MAHJOUB": "Point d'eau crucial pour la résilience des zones arides du Sud."
+} # <--- VÉRIFIE QUE CETTE ACCOLADE EST BIEN LÀ
 # ── Sidebar ──
 with st.sidebar:
     st.markdown("""
