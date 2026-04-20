@@ -65,7 +65,7 @@ def get_ndvi_tile_url(lat, lon, start, end, cloud_pct):
     except: return None
 
 # --- CALCUL DES MOYENNES POUR LE TABLEAU DE BORD ---
-def get_metrics(lat, lon, start, end, cloud_pct):
+def get_metrics(lat, lon, start, end, cloud_pct, radius=5000):
     """Calcule tous les indices d'un coup pour gagner du temps."""
     try:
         img = get_base_collection(lat, lon, start, end, cloud_pct)
