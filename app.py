@@ -304,10 +304,16 @@ if not df.empty:
                 st.warning("Turbide")
             else:
                 st.warning("Indisponible")
-        with h3:
+      with h3:
             st.write("**🌿 Berges**")
-            if ndvi > 0.25: st.success("Stable")
-            else: st.warning("Érosion")
+            # On vérifie si ndvi existe AVANT de comparer
+            if ndvi is not None:
+                if ndvi > 0.25: 
+                    st.success("Stable")
+                else: 
+                    st.warning("Érosion / Faible")
+            else:
+                st.info("Donnée N/A")
 
     with tab4:
         st.markdown("### 📄 Analyse Hydrologique & Rapport")
