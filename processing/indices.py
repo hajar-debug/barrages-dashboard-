@@ -24,7 +24,7 @@ def get_ndti_tile_url(lat, lon, start, end, cloud_pct):
     import ee
     try:
         # On définit la zone (buffer de 5km autour du barrage)
-        point = ee.Geometry.Point([lon, lat]).buffer(5000).bounds()
+        point = ee.Geometry.Point([lon, lat]).buffer(8000).bounds()
         
         # Collection Sentinel-2
         col = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
@@ -70,7 +70,7 @@ def get_metrics(lat, lon, start, end, cloud_pct):
     try:
         img = get_base_collection(lat, lon, start, end, cloud_pct)
         # Zone de calcul réduite au centre de la retenue (500m)
-        roi_calc = ee.Geometry.Point([lon, lat]).buffer(500).bounds()
+        roi_calc = ee.Geometry.Point([lon, lat]).buffer(8000).bounds()
         
         ndwi = img.normalizedDifference(['B3', 'B8'])
         ndvi = img.normalizedDifference(['B8', 'B4'])
@@ -105,7 +105,7 @@ def water_surface(lat, lon, start, end, cloud_pct):
 
 def get_timeseries(lat, lon, start, end, cloud):
     # ON PASSE À 5000m (5km) pour englober tout le barrage d'Oued El Makhazine
-    roi = ee.Geometry.Point([lon, lat]).buffer(5000) 
+    roi = ee.Geometry.Point([lon, lat]).buffer(8000) 
     
     col = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
         .filterBounds(roi) \
@@ -158,7 +158,7 @@ def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
     """Génère l'URL de la couche Sentinel-2 en vraies couleurs (RGB)"""
     import ee
     try:
-        point = ee.Geometry.Point([lon, lat]).buffer(5000).bounds()
+        point = ee.Geometry.Point([lon, lat]).buffer(8000).bounds()
         
         # Sélection des bandes B4 (Red), B3 (Green), B2 (Blue)
         rgb = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
@@ -183,7 +183,7 @@ def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
         return None
         
 def get_water_surface_area(lat, lon, date, cloud):
-    roi = ee.Geometry.Point([lon, lat]).buffer(5000)
+    roi = ee.Geometry.Point([lon, lat]).buffer(8000)
     img = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
             .filterBounds(roi) \
             .filterDate(ee.Date(date).advance(-1, 'month'), date) \
@@ -218,4 +218,3 @@ def get_climate_data(lat, lon, date_str):
     # Conversion Kelvin en Celsius
     temp_c = temp_img.reduceRegion(ee.Reducer.first(), poi, 1000).get('temperature_2m')
     return float(temp_c.getInfo()) - 273.15
-    

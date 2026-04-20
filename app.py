@@ -118,7 +118,7 @@ with st.sidebar:
         choice = st.selectbox("Choisissez un barrage :", barrage_list, label_visibility="collapsed")
 
         st.markdown('<div class="section-title">📅 Période</div>', unsafe_allow_html=True)
-        start_date = st.date_input("Début", value=pd.to_datetime("2024-01-01"))
+        start_date = st.date_input("Début", value=pd.to_datetime("2020-01-01"))
         end_date = st.date_input("Fin", value=pd.to_datetime("2026-04-17"))
 
         st.markdown('<div class="section-title">☁️ Filtre nuages</div>', unsafe_allow_html=True)
@@ -212,8 +212,8 @@ if not df.empty:
         col_a, col_b = st.columns(2)
         
         with col_a:
-            surface_initiale = get_water_surface_area(lat, lon, "2024-01-01", cloud_pct)
-            st.metric("Surface Janvier 2024", f"{surface_initiale:.2f} km²" if surface_initiale else "N/A")
+            surface_initiale = get_water_surface_area(lat, lon, "2020-01-01", cloud_pct)
+            st.metric("Surface Janvier 2020", f"{surface_initiale:.2f} km²" if surface_initiale else "N/A")
         
         with col_b:
             surface_actuelle = water if water else 0
@@ -277,10 +277,34 @@ if not df.empty:
             else:
                 interpretation += "🚨 **Alerte** : Sécheresse critique.\n\n"
 
-        if st.button("🏗️ Préparer le rapport PDF"):
+       if st.button("🏗️ Préparer le rapport PDF"):
             with st.spinner("Génération..."):
+                # Génération du rapport
                 pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
-                st.download_button(label="📥 Télécharger PDF", data=pdf_output, file_name=f"Rapport_{choice}.pdf", mime="application/pdf")
+                
+                # --- CORRECTION ICI ---
+                # Si c'est un objet FPDF, on récupère les bytes avec output()
+                # Si c'est déjà des bytes, on garde tel quel
+                try:
+                    if hasattr(pdf_output, 'output'):
+                        pdf_bytes = pdf_output.output(dest='S') # 'S' pour String/Bytes
+                    elif isinstance(pdf_output, str):
+                        pdf_bytes = pdf_output.encode('latin-1')
+                    else:
+                        pdf_bytes = pdf_output
+                except Exception as e:
+                    st.error(f"Erreur de conversion PDF : {e}")
+                    pdf_bytes = None
+                # -----------------------
+
+                if pdf_bytes:
+                    st.success("✅ Rapport prêt !")
+                    st.download_button(
+                        label="📥 Télécharger PDF",
+                        data=pdf_bytes,
+                        file_name=f"Rapport_{choice}.pdf",
+                        mime="application/pdf"
+                    )
         
         st.info(interpretation if interpretation else "Sélectionnez une période.")
 
