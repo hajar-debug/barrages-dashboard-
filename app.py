@@ -277,7 +277,7 @@ if not df.empty:
             else:
                 interpretation += "🚨 **Alerte** : Sécheresse critique.\n\n"
 
-       if st.button("🏗️ Préparer le rapport PDF"):
+        if st.button("🏗️ Préparer le rapport PDF"):
             with st.spinner("Génération..."):
                 # Génération du rapport
                 pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
