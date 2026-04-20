@@ -288,12 +288,22 @@ if not df.empty:
         h1, h2, h3 = st.columns(3)
         with h1:
             st.write("**💧 Remplissage**")
-            if ndwi > 0.15: st.success("Excellent")
-            else: st.error("Critique")
+            # On ajoute "ndwi is not None" pour éviter le crash
+            if ndwi is not None and ndwi > 0.15: 
+                st.success("Excellent")
+            elif ndwi is not None:
+                st.error("Critique")
+            else:
+                st.warning("Indisponible")
+
         with h2:
             st.write("**🌫️ Qualité**")
-            if ndti < 0.05: st.success("Claire")
-            else: st.warning("Turbide")
+            if ndti is not None and ndti < 0.05: 
+                st.success("Claire")
+            elif ndti is not None:
+                st.warning("Turbide")
+            else:
+                st.warning("Indisponible")
         with h3:
             st.write("**🌿 Berges**")
             if ndvi > 0.25: st.success("Stable")
