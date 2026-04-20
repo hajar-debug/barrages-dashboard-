@@ -223,7 +223,9 @@ if not df.empty:
         with st.spinner("Calcul GEE en cours..."):
             # 1. Calcul des indices
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=5000)
-            
+            st.write("--- DEBUG SYSTEM ---")
+            st.write(f"Metrics brut : {metrics}")
+            st.write(f"Type de metrics : {type(metrics)}")
             # Extraction sécurisée des résultats
             if metrics and isinstance(metrics, dict):
                 # Ajoute cette ligne temporaire pour debugger :
@@ -346,30 +348,36 @@ if not df.empty:
             else:
                 interpretation += "🚨 **Alerte** : Sécheresse critique.\n\n"
 
-        if st.button("🏗️ Préparer le rapport PDF"):
-            with st.spinner("Génération..."):
-                pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
-                try:
-                    if hasattr(pdf_output, 'output'):
-                        pdf_bytes = pdf_output.output(dest='S')
-                    elif isinstance(pdf_output, str):
-                        pdf_bytes = pdf_output.encode('latin-1')
-                    else:
-                        pdf_bytes = pdf_output
-                except Exception as e:
-                    st.error(f"Erreur conversion : {e}")
-                    pdf_bytes = None
+       if st.button("🏗️ Préparer le rapport PDF"):
+    with st.spinner("Génération..."):
+        try:
+            # Génération du PDF
+            pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
+            
+            # Conversion sécurisée en format binaire (bytes)
+            if hasattr(pdf_output, 'output'):
+                # Pour FPDF : dest='S' renvoie une chaîne qu'on encode en latin-1
+                pdf_bytes = pdf_output.output(dest='S').encode('latin-1')
+            elif isinstance(pdf_output, (bytearray, str)):
+                # Si c'est déjà du texte ou un bytearray, on convertit
+                pdf_bytes = bytes(pdf_output) if isinstance(pdf_output, bytearray) else pdf_output.encode('latin-1')
+            else:
+                pdf_bytes = pdf_output
+            
+            # Stockage en session pour éviter de perdre le PDF au prochain clic
+            st.session_state['pdf_ready'] = pdf_bytes
+            
+        except Exception as e:
+            st.error(f"Erreur lors de la génération : {e}")
+            st.session_state['pdf_ready'] = None
 
-        if 'pdf_bytes' in locals() and pdf_bytes is not None:
+# Affichage du bouton de téléchargement si le PDF est prêt
+        if st.session_state.get('pdf_ready'):
             st.download_button(
                 label="📥 Télécharger le Rapport PDF",
-                data=pdf_bytes,
+                data=st.session_state['pdf_ready'],
                 file_name=f"Rapport_{choice}.pdf",
                 mime="application/pdf"
             )
         else:
-            # ICI : Il faut 1 tabulation (ou 4 espaces) de plus que le "else"
-            st.warning("⚠️ Le rapport PDF n'est pas disponible car les données GEE sont absentes (N/A).")
-        
-        # Cette ligne revient au niveau du "if" initial
-        st.info(interpretation if interpretation else "Sélectionnez une période.")
+            st.warning("⚠️ Le rapport PDF n'est pas encore généré ou les données sont absentes.")
