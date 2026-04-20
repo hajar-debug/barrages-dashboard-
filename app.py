@@ -70,7 +70,8 @@ except Exception as e:
 @st.cache_data
 def load_barrages():
     df_load = pd.read_csv("Data/barrages.csv")
-    df_load.columns = df_load.columns.str.strip() 
+    # Cette ligne est MAGIQUE : elle nettoie tous les noms de colonnes
+    df_load.columns = df_load.columns.str.strip().str.lower() 
     return df_load
 
 df = load_barrages()
