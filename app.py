@@ -228,7 +228,7 @@ if not df.empty:
         with c4:
             st.metric(label="📐 Surface Estimée", value=f"{water:.2f} km²" if water else "N/A")
         st.markdown("### 📈 Évolution Temporelle")
-        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
+        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
         fig = None 
         
         if ts is not None and not ts.empty:
