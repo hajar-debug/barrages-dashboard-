@@ -5,6 +5,7 @@ from processing.gee_init import init_gee
 from report.report_generator import generate_pdf
 from datetime import datetime
 from processing.maps import build_map
+
 st.set_page_config(
     page_title="Barrages Maroc | Dashboard SIG",
     page_icon="💧",
@@ -177,17 +178,14 @@ if not df.empty:
         )
         st_folium(m, width='stretch') 
 
-
     with tab2:
-        from processing.indices import get_metrics, water_surface, get_timeseries
-        import plotly.express as px
+        from processing.indices import get_metrics, water_surface, get_timeseries, get_water_surface_area, get_climate_data
         
         with st.spinner("Calcul GEE en cours..."):
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
             water = water_surface(lat, lon, start_str, end_str, cloud_pct)
 
-        # Les métriques s'affichent d'abord
         c1, c2, c3, c4 = st.columns(4) 
         c1.metric("💧 NDWI", f"{ndwi:.3f}" if ndwi else "N/A")
         c2.metric("🌫️ NDTI", f"{ndti:.3f}" if ndti else "N/A") 
@@ -195,8 +193,6 @@ if not df.empty:
         c4.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
 
         st.markdown("### 📈 Évolution Temporelle")
-
-        # --- BLOC GRAPHIQUE (Réaligné strictement sous tab2) ---
         ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct)
         fig = None 
         
@@ -208,49 +204,27 @@ if not df.empty:
                 template="plotly_dark",
                 color_discrete_map={"NDWI": "#00c9ff", "Turbidité": "#ffa500"}
             )
-            fig.update_layout(
-                xaxis_title="Date d'acquisition",
-                yaxis_title="Valeur de l'indice",
-                hovermode="x unified"
-            )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.warning("📊 Aucune donnée historique disponible pour cette période.")
+            st.warning("📊 Aucune donnée historique disponible.")
 
         st.markdown("### 🛰️ Bilan de Surface (Analyse Comparative)")
-    col_a, col_b = st.columns(2)
-    
+        col_a, col_b = st.columns(2)
+        
         with col_a:
-        surface_initiale = get_water_surface_area(lat, lon, "2024-01-01", cloud_pct)
-        st.metric("Surface Janvier 2024", f"{surface_initiale:.2f} km²")
+            surface_initiale = get_water_surface_area(lat, lon, "2024-01-01", cloud_pct)
+            st.metric("Surface Janvier 2024", f"{surface_initiale:.2f} km²" if surface_initiale else "N/A")
         
         with col_b:
-        surface_actuelle = get_water_surface_area(lat, lon, end_str, cloud_pct)
-        delta = surface_actuelle - surface_initiale
-        st.metric("Surface Actuelle", f"{surface_actuelle:.2f} km²", delta=f"{delta:.2f} km²")
+            surface_actuelle = water if water else 0
+            delta = surface_actuelle - (surface_initiale if surface_initiale else 0)
+            st.metric("Surface Actuelle", f"{surface_actuelle:.2f} km²", delta=f"{delta:.2f} km²")
 
-        if surface_actuelle < surface_initiale:
-        st.warning(f"⚠️ Perte de surface liquide de {abs(delta):.2f} km² par rapport à 2024.")
-        with st.expander("🔬 Méthodologie et Interprétation des Indices"):
-            st.write("""
-        ### 1. NDWI (Normalized Difference Water Index)
-        **Formule :** $(Green - NIR) / (Green + NIR)$  
-        * **Utilité :** Maximise la réflectance de l'eau.
-        * **Interprétation :** Valeurs > 0.2 indiquent de l'eau libre.
+        if surface_actuelle < (surface_initiale if surface_initiale else 0):
+            st.warning(f"⚠️ Perte de surface liquide de {abs(delta):.2f} km² par rapport à 2024.")
 
-        ### 2. NDTI (Normalized Difference Turbidity Index)
-        **Formule :** $(Red - Green) / (Red + Green)$  
-        * **Utilité :** Mesure la concentration de sédiments.
-
-        ### 3. NDVI (Normalized Difference Vegetation Index)
-        **Formule :** $(NIR - Red) / (NIR + Red)$  
-        """)
-
-    # AJOUT DU TABLEAU DE TEMPÉRATURE
-        from processing.indices import get_climate_data
         st.markdown("### 🌡️ Contexte Climatique")
         temp_actuelle = get_climate_data(lat, lon, end_str)
-        
         climat_df = pd.DataFrame({
             "Indicateur": ["Température Moyenne", "Évapotranspiration (est.)", "État du Ciel"],
             "Valeur": [f"{temp_actuelle:.1f} °C", "4.5 mm/jour", "Dégagé" if cloud_pct < 20 else "Nuageux"],
@@ -266,128 +240,48 @@ if not df.empty:
         st.subheader(f"État du réservoir : {rl}")
         st.progress(rs / 100)
         
-        if ndti and ndti > 0.1:
-            st.error("🚨 Alerte : Turbidité élevée détectée (Risque d'envasement)")
-            
-        for a in al: st.warning(a)
-# Dans l'onglet ANALYSES (tab2)
-    with tab2:
-        # ... (Garde ton code actuel pour les métriques et le graphique) ...
-        
-        # AJOUT DU TABLEAU DE TEMPÉRATURE
-        from processing.indices import get_climate_data
-        st.markdown("### 🌡️ Contexte Climatique")
-        temp_actuelle = get_climate_data(lat, lon, end_str)
-        
-        climat_df = pd.DataFrame({
-            "Indicateur": ["Température Moyenne", "Évapotranspiration (est.)", "État du Ciel"],
-            "Valeur": [f"{temp_actuelle:.1f} °C", "4.5 mm/jour", "Dégagé" if cloud_pct < 20 else "Nuageux"],
-            "Impact": ["Normal", "Risque de perte d'eau", "Optimale"]
-        })
-        st.table(climat_df)
-
-    # Dans l'onglet RISQUES (tab3)
-    with tab3:
         st.subheader("🌊 Alerte Prédictive Inondation")
-        
-        # Logique de prédiction simplifiée (Valeur ajoutée Master)
-        # On croise le remplissage actuel (NDWI) avec un facteur de risque
         flood_risk = (ndwi + 0.1) * 100 if ndwi else 0
-        
         if flood_risk > 80:
             st.error(f"🚨 RISQUE CRITIQUE ({flood_risk:.1f}%) : Capacité maximale atteinte.")
         elif flood_risk > 50:
-            st.warning(f"⚠️ VIGILANCE ({flood_risk:.1f}%) : Niveau élevé, surveillance accrue.")
+            st.warning(f"⚠️ VIGILANCE ({flood_risk:.1f}%) : Niveau élevé.")
         else:
-            st.success(f"✅ RISQUE FAIBLE ({flood_risk:.1f}%) : Capacité de stockage disponible.")
+            st.success(f"✅ RISQUE FAIBLE ({flood_risk:.1f}%)")
 
-    # Tableau de Température & Climat
-    st.markdown("### 🌡️ Paramètres Météorologiques")
-    t_col1, t_col2 = st.columns(2)
-    
-    # On peut imaginer un petit DataFrame pour le tableau
-    climat_data = {
-        "Paramètre": ["Température Moyenne", "Évapotranspiration", "Humidité du sol"],
-        "Valeur": [f"{temp_c:.1f} °C", "4.2 mm/j", "0.28 m³/m³"],
-        "Statut": ["Normal", "Élevé", "Saturé"]
-    }
-    st.table(climat_data)
+        st.markdown("### 🏥 Bilan de Santé du Réservoir")
+        h1, h2, h3 = st.columns(3)
+        with h1:
+            st.write("**💧 Remplissage**")
+            if ndwi > 0.15: st.success("Excellent")
+            else: st.error("Critique")
+        with h2:
+            st.write("**🌫️ Qualité**")
+            if ndti < 0.05: st.success("Claire")
+            else: st.warning("Turbide")
+        with h3:
+            st.write("**🌿 Berges**")
+            if ndvi > 0.25: st.success("Stable")
+            else: st.warning("Érosion")
+
     with tab4:
         st.markdown("### 📄 Analyse Hydrologique & Rapport")
         
-        # 1. Logique d'interprétation dynamique
+        # Logique d'interprétation dynamique
         interpretation = ""
-        
         if ndwi is not None:
-            # Pour un grand barrage, un NDWI moyen > 0.15 indique souvent un remplissage massif
             if ndwi > 0.15: 
-                st.success("🌊 **DIAGNOSTIC : CRUE / REMPLISSAGE ÉLEVÉ**")
-                interpretation += "✅ **État de l'eau** : La retenue affiche un indice de présence d'eau élevé, typique des périodes de fortes précipitations.\n\n"
+                interpretation += "✅ **État de l'eau** : Remplissage élevé.\n\n"
             elif ndwi > 0.02:
-                st.info("📊 **DIAGNOSTIC : NIVEAU NORMAL**")
-                interpretation += "⚠️ **État de l'eau** : Niveau de remplissage moyen.\n\n"
+                interpretation += "⚠️ **État de l'eau** : Niveau moyen.\n\n"
             else:
-                st.error("🚨 **DIAGNOSTIC : ALERTE SÉCHERESSE**")
-                interpretation += "🚨 **Alerte** : Très faible réflectance de l'eau. Risque de déficit hydrique sévère.\n\n"
-        
-        if ndti is not None:
-            if ndti > 0.05:
-                st.warning("🌫️ **TURBIDITÉ ÉLEVÉE**")
-                interpretation += "🌫️ **Qualité** : Forte concentration de sédiments détectée, suggérant un apport de boues par les oueds (crues) ou un envasement important.\n\n"
-            else:
-                interpretation += "✨ **Qualité** : Eau claire avec peu de sédiments en suspension.\n\n"
+                interpretation += "🚨 **Alerte** : Sécheresse critique.\n\n"
 
         if st.button("🏗️ Préparer le rapport PDF"):
-            with st.spinner("Rédaction du rapport avec graphiques..."):
-                # AJOUT : Passage du paramètre fig=fig
+            with st.spinner("Génération..."):
                 pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
-                
-                # Conversion sécurisée en bytes
-                if isinstance(pdf_output, str):
-                    pdf_bytes = pdf_output.encode('latin-1')
-                else:
-                    pdf_bytes = bytes(pdf_output)
-
-                st.success("✅ Rapport prêt !")
-                st.download_button(
-                    label="📥 Télécharger le rapport (PDF)",
-                    data=pdf_bytes,
-                    file_name=f"Rapport_{choice}_{datetime.now().strftime('%d-%m-%y')}.pdf",
-                    mime="application/pdf"
-                )
-
-        st.markdown("---")
-        st.subheader("💡 Interprétation Experte")
+                st.download_button(label="📥 Télécharger PDF", data=pdf_output, file_name=f"Rapport_{choice}.pdf", mime="application/pdf")
+        
         st.info(interpretation if interpretation else "Sélectionnez une période.")
 
-    
-st.markdown("### 🏥 Bilan de Santé du Réservoir")
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    # État du remplissage (Basé sur le NDWI)
-    st.write("**💧 Remplissage**")
-    if ndwi > 0.2:
-        st.success("Excellent")
-    elif ndwi > 0.05:
-        st.warning("Moyen")
-    else:
-        st.error("Critique")
-
-with col2:
-    # État de la qualité / Sédiments (Basé sur le NDTI)
-    st.write("**🌫️ Qualité de l'eau**")
-    if ndti < 0.02:
-        st.success("Claire")
-    elif ndti < 0.1:
-        st.warning("Chargée")
-    else:
-        st.error("Trés Turbide")
-
-with col3:
-    # État des berges (Basé sur le NDVI)
-    st.write("**🌿 Protection Berges**")
-    if ndvi > 0.3:
-        st.success("Stable")
-    else:
-        st.warning("Risque d'Érosion")
+# ── Fin du Script ──
