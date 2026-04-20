@@ -159,27 +159,6 @@ if not df.empty:
         <small style="color:#6b7fa3;">Mis en service en {row['Annee']} | Capacité : {row['Capacite']} Mm³ | Usage : {row['Usage']}</small>
     </div>
     """, unsafe_allow_html=True)    
-import plotly.graph_objects as go
-
-      with st.sidebar: 
-    st.markdown("...")
-    
-    # Carte du Maroc avec Sahara complet
-    fig_loc = go.Figure(go.Scattermapbox(
-        lat=[lat], lon=[lon],
-        mode='markers',
-        marker=go.scattermapbox.Marker(size=14, color='#c1272d', symbol='marker'),
-        text=[choice],
-        hoverinfo='text'
-    ))
-
-    fig_loc.update_layout(
-        mapbox_style="carto-darkmatter",
-        mapbox=dict(center=dict(lat=28.5, lon=-9.5), zoom=3.8), # Centrage national
-        margin={"r":0,"t":0,"l":0,"b":0}, height=250,
-        paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)"
-    )
-    st.plotly_chart(fig_loc, use_container_width=True, config={'displayModeBar': False})
 # ── Configuration du Buffer Dynamique ──
 BUFFER_CONFIG = {
     "Al Wahda": 15000,
