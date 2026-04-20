@@ -226,9 +226,12 @@ if not df.empty:
             
             # Extraction sécurisée des résultats
             if metrics and isinstance(metrics, dict):
-                ndwi = metrics.get('ndwi')
-                ndvi = metrics.get('ndvi')
-                ndti = metrics.get('ndti')
+                # Ajoute cette ligne temporaire pour debugger :
+                # st.write("Clés reçues :", metrics.keys()) 
+                
+                ndwi = metrics.get('ndwi') or metrics.get('nd')
+                ndvi = metrics.get('ndvi') or metrics.get('nd_1')
+                ndti = metrics.get('ndti') or metrics.get('nd_2')
             
             # 2. Calcul de la surface (UNE SEULE FOIS avec le radius)
             # Supprime la deuxième ligne "water =" qui n'avait pas le radius
