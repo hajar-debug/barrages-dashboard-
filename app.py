@@ -340,8 +340,16 @@ if not df.empty:
                     st.error(f"Erreur conversion : {e}")
                     pdf_bytes = None
 
-                if pdf_bytes:
-                    st.success("✅ Rapport prêt !")
-                    st.download_button(label="📥 Télécharger PDF", data=pdf_bytes, file_name=f"Rapport_{choice}.pdf", mime="application/pdf")
+                # --- GÉNÉRATION DU PDF ---
+# On vérifie si on a les données nécessaires
+        if 'pdf_bytes' in locals() and pdf_bytes is not None:
+           st.download_button(
+            label="📥 Télécharger le Rapport PDF",
+            data=pdf_bytes,
+            file_name=f"Rapport_{choice}.pdf",
+            mime="application/pdf"
+          )
+        else:
+    st.warning("⚠️ Le rapport PDF n'est pas disponible car les données GEE sont absentes (N/A).")
         
         st.info(interpretation if interpretation else "Sélectionnez une période.")
