@@ -2,7 +2,7 @@ import folium
 from folium import plugins
 import ee 
 
-def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, show_ndti):
+def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=5000):
     # 1. Zone d'intérêt (ROI) élargie à 5km pour Oued El Makhazine
     roi = ee.Geometry.Point([lon, lat]).buffer(5000)
     
