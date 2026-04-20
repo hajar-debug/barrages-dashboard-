@@ -96,7 +96,7 @@ with st.sidebar:
     </div>
     """, unsafe_allow_html=True)
 
-if not df.empty:
+    if not df.empty:
         st.markdown('<div class="section-title">🏞 Sélection</div>', unsafe_allow_html=True)
         barrage_list = df["barrage"].dropna().unique().tolist()
         choice = st.selectbox("Choisissez un barrage :", barrage_list, label_visibility="collapsed")
@@ -139,8 +139,7 @@ if not df.empty:
     
     # Header Expert
     st.markdown(f"<div class='dash-title'>Barrage {choice}</div>", unsafe_allow_html=True)
-    st.markdown(f"**Bassin Versant :** {row['Bassin']} | **Province :** {row['nom_provin']}")
-
+    st.markdown(f"**Bassin Versant :** {row['bassin']} | **Province :** {row['nom_provin']}")
     # --- AFFICHAGE DE LA RÉPLIQUE ---
     fact = expert_facts.get(choice.upper(), "Infrastructure clé pour la stratégie nationale de l'eau.")
     st.markdown(f"""
