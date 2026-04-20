@@ -161,7 +161,7 @@ if not df.empty:
     """, unsafe_allow_html=True)    
 import plotly.graph_objects as go
 
-       with st.sidebar:
+       with st.sidebar: 
     st.markdown('<div class="section-title">🇲🇦 Situation Nationale</div>', unsafe_allow_html=True)
     
     # Carte du Maroc avec Sahara complet
