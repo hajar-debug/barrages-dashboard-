@@ -1,22 +1,22 @@
 import folium
 from folium import plugins
-import ee  
-import geemap.foliumap as geemap
+import ee 
 
 def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, show_ndti):
-    # AUGMENTER ICI AUSSI À 5000
+    # 1. Zone d'intérêt (ROI) élargie à 5km pour Oued El Makhazine
     roi = ee.Geometry.Point([lon, lat]).buffer(5000)
     
-    # Ajout de get_ndti_tile_url dans l'import
+    # 2. Imports locaux des fonctions de calcul d'indices
     from processing.indices import get_ndwi_tile_url, get_ndvi_tile_url, get_rgb_tile_url, get_ndti_tile_url
 
+    # 3. Initialisation de la carte (On utilise folium directement pour éviter le bug geemap)
     m = folium.Map(
         location=[lat, lon],
-        zoom_start=13,
+        zoom_start=12, # Zoom 12 est mieux pour voir les 5km du barrage
         tiles=None,
     )
 
-    # ── 1. FONDS DE CARTE (Multi-sources) ─────────────────────────────
+    # ── 1. FONDS DE CARTE ─────────────────────────────────────────────
     folium.TileLayer(
         tiles='https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
         attr='Google',
@@ -38,11 +38,11 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
         overlay=False,
     ).add_to(m)
 
-    # ── 2. COUCHES ANALYTIQUES (Optimisées) ─────────────────────────────
+    # ── 2. COUCHES ANALYTIQUES (Correction des variables cloud) ─────────
     
-   # --- COUCHE NDTI (Turbidité / Envasement) ---
+    # --- COUCHE NDTI (Turbidité) ---
     if show_ndti:
-        # Correction ici : utilise 'cloud' qui est l'argument de ta fonction build_map
+        # On utilise 'cloud' (l'argument de la fonction)
         url = get_ndti_tile_url(lat, lon, start, end, cloud) 
         if url:
             folium.TileLayer(
@@ -54,8 +54,10 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
                 show=False 
             ).add_to(m)
 
+    # --- COUCHE NDWI (Eau) ---
     if show_ndwi:
-        url = get_ndwi_tile_url(lat, lon, start, end, cloud_pct)
+        # CORRECTION : cloud_pct remplacé par cloud
+        url = get_ndwi_tile_url(lat, lon, start, end, cloud) 
         if url:
             folium.TileLayer(
                 tiles=url,
@@ -66,8 +68,10 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
                 show=True 
             ).add_to(m)
 
+    # --- COUCHE NDVI (Végétation) ---
     if show_ndvi:
-        url = get_ndvi_tile_url(lat, lon, start, end, cloud_pct)
+        # CORRECTION : cloud_pct remplacé par cloud
+        url = get_ndvi_tile_url(lat, lon, start, end, cloud) 
         if url:
             folium.TileLayer(
                 tiles=url,
@@ -78,7 +82,7 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
                 show=False 
             ).add_to(m)
 
-    # ── 3. INTERFACE ──────────────────────────────────────────────────────
+    # ── 3. INTERFACE & TOOLS ──────────────────────────────────────────
     folium.LayerControl(position='topright', collapsed=False).add_to(m)
     plugins.Fullscreen().add_to(m)
     plugins.MeasureControl(position='bottomleft').add_to(m)
