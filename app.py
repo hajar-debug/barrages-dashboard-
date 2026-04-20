@@ -16,65 +16,59 @@ st.set_page_config(
 # ── CSS Pro ──────────────────────────────
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Syne:wght@700;800&display=swap');
 
-:root {
-    --bg:       #0a0e1a;
-    --surface:  #111827;
-    --card:     #1a2235;
-    --border:   #1e3a5f;
-    --accent:   #00c9ff;
-    --accent2:  #0066ff;
-    --text:     #e8edf5;
-    --muted:    #6b7fa3;
-}
+    /* Fond global et typographie */
+    [data-testid="stAppViewContainer"] {
+        background-color: #05070a;
+        background-image: radial-gradient(circle at 2px 2px, #1a2235 1px, transparent 0);
+        background-size: 40px 40px;
+    }
 
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-    background-color: var(--bg);
-    color: var(--text);
-}
+    .stApp {
+        font-family: 'Inter', sans-serif;
+    }
 
-section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #0d1526 0%, #0a0e1a 100%);
-    border-right: 1px solid var(--border);
-}
+    /* Cartes de métriques améliorées */
+    [data-testid="metric-container"] {
+        background: rgba(26, 34, 53, 0.6);
+        border: 1px solid rgba(0, 201, 255, 0.2);
+        border-radius: 15px;
+        padding: 20px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        transition: transform 0.3s ease;
+    }
+    
+    [data-testid="metric-container"]:hover {
+        transform: translateY(-5px);
+        border-color: #00c9ff;
+    }
 
-.dash-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 2.2rem;
-    font-weight: 800;
-    background: linear-gradient(90deg, #00c9ff, #0066ff);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    margin-bottom: 0;
-}
+    /* Style des Onglets (Tabs) */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        background-color: transparent;
+    }
 
-.dash-sub {
-    font-size: 0.9rem;
-    color: var(--muted);
-    font-weight: 400;
-    margin-top: 2px;
-}
+    .stTabs [data-baseweb="tab"] {
+        height: 45px;
+        background-color: #111827;
+        border-radius: 8px 8px 0px 0px;
+        color: white;
+        border: 1px solid #1e3a5f;
+        padding: 0 20px;
+    }
 
-.section-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 0.75rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--accent);
-    margin: 20px 0 10px 0;
-    border-bottom: 1px solid rgba(30,58,95,0.4);
-    padding-bottom: 5px;
-}
+    .stTabs [aria-selected="true"] {
+        background: linear-gradient(90deg, #00c9ff, #0066ff) !important;
+        border: none !important;
+    }
 
-[data-testid="metric-container"] {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 15px;
-}
+    /* Sidebar élégante */
+    [data-testid="stSidebar"] {
+        border-right: 1px solid rgba(0, 201, 255, 0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -192,12 +186,16 @@ if not df.empty:
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
             water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
 
+        # Nouveau design des colonnes de métriques
         c1, c2, c3, c4 = st.columns(4) 
-        c1.metric("💧 NDWI", f"{ndwi:.3f}" if ndwi else "N/A")
-        c2.metric("🌫️ NDTI", f"{ndti:.3f}" if ndti else "N/A") 
-        c3.metric("🌿 NDVI", f"{ndvi:.3f}" if ndvi else "N/A")
-        c4.metric("📐 Surface", f"{water:.2f} km²" if water else "N/A")
-
+        with c1:
+            st.metric(label="💧 Indice d'Eau", value=f"{ndwi:.3f}" if ndwi else "N/A", help="NDWI : Plus il est haut, plus la présence d'eau est confirmée.")
+        with c2:
+            st.metric(label="🌫️ Turbidité", value=f"{ndti:.3f}" if ndti else "N/A", help="NDTI : Mesure la clarté de l'eau.")
+        with c3:
+            st.metric(label="🌿 Santé Berges", value=f"{ndvi:.3f}" if ndvi else "N/A", help="NDVI : État de la végétation environnante.")
+        with c4:
+            st.metric(label="📐 Surface Estimée", value=f"{water:.2f} km²" if water else "N/A")
         st.markdown("### 📈 Évolution Temporelle")
         ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
         fig = None 
