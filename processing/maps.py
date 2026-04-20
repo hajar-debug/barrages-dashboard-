@@ -40,9 +40,10 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
 
     # ── 2. COUCHES ANALYTIQUES (Optimisées) ─────────────────────────────
     
-    # --- COUCHE NDTI (Turbidité / Envasement) --- AJOUTÉ
+   # --- COUCHE NDTI (Turbidité / Envasement) ---
     if show_ndti:
-        url = get_ndti_tile_url(lat, lon, start, end, cloud_pct)
+        # Correction ici : utilise 'cloud' qui est l'argument de ta fonction build_map
+        url = get_ndti_tile_url(lat, lon, start, end, cloud) 
         if url:
             folium.TileLayer(
                 tiles=url,
@@ -50,7 +51,7 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
                 name='🌫️ Indice NDTI (Turbidité)',
                 overlay=True,
                 opacity=0.7,
-                show=False # Désactivé par défaut pour ne pas surcharger
+                show=False 
             ).add_to(m)
 
     if show_ndwi:
