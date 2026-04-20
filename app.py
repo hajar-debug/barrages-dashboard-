@@ -223,9 +223,6 @@ if not df.empty:
         with st.spinner("Calcul GEE en cours..."):
             # 1. Calcul des indices
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=5000)
-            st.write("--- DEBUG SYSTEM ---")
-            st.write(f"Metrics brut : {metrics}")
-            st.write(f"Type de metrics : {type(metrics)}")
             # Extraction sécurisée des résultats
             if metrics and isinstance(metrics, dict):
                 # Ajoute cette ligne temporaire pour debugger :
