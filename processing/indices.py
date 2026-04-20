@@ -105,13 +105,14 @@ def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
     except: return None
 
 def get_timeseries(lat, lon, start, end, cloud, radius=8000):
-
-    roi = ee.Geometry.Point([lon, lat]).buffer(radius)
+    # On utilise maintenant le radius pour créer la zone d'étude
+    roi = ee.Geometry.Point([lon, lat]).buffer(radius) 
     
     col = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
         .filterBounds(roi) \
         .filterDate(start, end) \
         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud))
+    
 
     def extract_metrics(img):
         date = img.date().format('YYYY-MM-dd')
@@ -212,7 +213,7 @@ def get_climate_data(lat, lon, date_str):
     roi = ee.Geometry.Point([lon, lat])
     # Collection ERA5-Land (Température à 2m)
     dataset = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY") \
-                .filterBounds(poi) \
+                .filterBounds(roi) \
                 .filterDate(ee.Date(date_str).advance(-7, 'day'), date_str)
     
     temp_img = dataset.select('temperature_2m').mean()
