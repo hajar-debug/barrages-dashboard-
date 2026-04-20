@@ -247,7 +247,7 @@ if not df.empty:
         col_a, col_b = st.columns(2)
         
         with col_a:
-            surface_initiale = get_water_surface_area(lat, lon, "2020-01-01", cloud_pct, radius=current_radius)
+            surface_initiale = get_water_surface_area(lat, lon, "2020-01-01", cloud_pct)
             st.metric("Surface Janvier 2020", f"{surface_initiale:.2f} km²" if surface_initiale else "N/A")
         
         with col_b:
