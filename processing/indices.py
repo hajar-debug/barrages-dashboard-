@@ -104,9 +104,9 @@ def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
         return area_m2 / 1e6
     except: return None
 
-def get_timeseries(lat, lon, start, end, cloud):
-    # ON PASSE À 5000m (5km) pour englober tout le barrage d'Oued El Makhazine
-    roi = ee.Geometry.Point([lon, lat]).buffer(8000) 
+def get_timeseries(lat, lon, start, end, cloud, radius=8000):
+
+    roi = ee.Geometry.Point([lon, lat]).buffer(radius)
     
     col = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
         .filterBounds(roi) \
@@ -183,8 +183,8 @@ def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
         print(f"Erreur RGB Tile: {e}")
         return None
         
-def get_water_surface_area(lat, lon, date, cloud):
-    roi = ee.Geometry.Point([lon, lat]).buffer(8000)
+def get_water_surface_area(lat, lon, date, cloud, radius=8000):
+    roi = ee.Geometry.Point([lon, lat]).buffer(radius)
     img = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
             .filterBounds(roi) \
             .filterDate(ee.Date(date).advance(-1, 'month'), date) \
@@ -209,7 +209,7 @@ def get_water_surface_area(lat, lon, date, cloud):
     return ee.Number(area_m2).divide(1e6).getInfo() # Retourne des km²
 def get_climate_data(lat, lon, date_str):
     # Point de mesure
-    poi = ee.Geometry.Point([lon, lat])
+    roi = ee.Geometry.Point([lon, lat])
     # Collection ERA5-Land (Température à 2m)
     dataset = ee.ImageCollection("ECMWF/ERA5_LAND/HOURLY") \
                 .filterBounds(poi) \
