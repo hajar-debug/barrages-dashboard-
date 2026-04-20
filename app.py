@@ -72,18 +72,8 @@ def load_barrages():
     df_load = pd.read_csv("Data/barrages.csv")
     df_load.columns = df_load.columns.str.strip() 
     return df_load
-# ── Init GEE ──
-try:
-    init_gee()
-except Exception as e:
-    st.error(f"Erreur d'initialisation Google Earth Engine : {e}")
 
-# ── LOAD DATA ──
-@st.cache_data
-def load_barrages():
-    df = pd.read_csv("Data/barrages.csv")
-    df.columns = df.columns.str.strip() 
-    return df  # <--- VÉRIFIE BIEN QUE CETTE LIGNE EST OK
+df = load_barrages()
 
 # ── DICTIONNAIRE DE RÉPLIQUES (LIGNE 87) ──
 expert_facts = {
