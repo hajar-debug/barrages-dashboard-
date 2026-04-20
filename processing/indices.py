@@ -65,30 +65,38 @@ def get_ndvi_tile_url(lat, lon, start, end, cloud_pct):
     except: return None
 
 # --- CALCUL DES MOYENNES POUR LE TABLEAU DE BORD ---
-def get_metrics(lat, lon, start, end, cloud_pct, radius=5000):
-    """Calcule tous les indices d'un coup pour gagner du temps."""
+def get_metrics(lat, lon, start_date, end_date, cloud_pct, radius=5000):
     try:
-        img = get_base_collection(lat, lon, start, end, cloud_pct)
-        # Zone de calcul réduite au centre de la retenue (500m)
-        roi_calc = ee.Geometry.Point([lon, lat]).buffer(8000).bounds()
+        roi = ee.Geometry.Point([lon, lat]).buffer(radius)
         
-        ndwi = img.normalizedDifference(['B3', 'B8'])
-        ndvi = img.normalizedDifference(['B8', 'B4'])
-        ndti = img.normalizedDifference(['B4', 'B3']) # Turbidité
+        # On charge Sentinel-2
+        collection = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
+            .filterBounds(roi) \
+            .filterDate(start_date, end_date) \
+            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct))
         
-        stats = img.addBands([ndwi, ndvi, ndti]).reduceRegion(
+        # On prend la mosaïque la plus propre (médiane)
+        image = collection.median().clip(roi)
+        
+        # On calcule les indices (Noms de bandes exacts)
+        # MNDWI = (Green - SWIR) / (Green + SWIR)
+        ndwi = image.normalizedDifference(['B3', 'B11']).rename('ndwi')
+        # NDVI = (NIR - Red) / (NIR + Red)
+        ndvi = image.normalizedDifference(['B8', 'B4']).rename('ndvi')
+        # NDTI = (Red - Green) / (Red + Green)
+        ndti = image.normalizedDifference(['B4', 'B3']).rename('ndti')
+        
+        # RÉDUCTION : On transforme l'image en chiffres (Moyenne sur la zone)
+        stats = ee.Image.cat([ndwi, ndvi, ndti]).reduceRegion(
             reducer=ee.Reducer.mean(),
-            geometry=roi_calc,
-            scale=10
-        )
+            geometry=roi,
+            scale=10,
+            maxPixels=1e9
+        ).getInfo()
         
-        res = stats.getInfo()
-        return {
-            "ndwi": res.get('nd'),
-            "ndvi": res.get('nd_1'),
-            "ndti": res.get('nd_2')
-        }
-    except: return {"ndwi": None, "ndvi": None, "ndti": None}
+        return stats # Renvoie {'ndwi': 0.XX, 'ndvi': 0.XX, 'ndti': 0.XX}
+    except Exception as e:
+        return {"ndwi": None, "ndvi": None, "ndti": None}
 
 def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
     """Calcule la surface de la retenue en km²."""
