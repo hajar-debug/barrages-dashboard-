@@ -215,7 +215,7 @@ if not df.empty:
         with st.spinner("Calcul GEE en cours..."):
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct)
             ndwi, ndvi, ndti = metrics['ndwi'], metrics['ndvi'], metrics['ndti']
-            water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
+            water = water_surface(lat, lon, start_str, end_str, cloud_pct)
 
         # Nouveau design des colonnes de métriques
         c1, c2, c3, c4 = st.columns(4) 
