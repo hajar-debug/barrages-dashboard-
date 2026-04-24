@@ -221,30 +221,35 @@ with tab4:
     else:
         st.error("🚨 **Alerte** : Sécheresse critique.")
 
-    # --- SECTION RAPPORT PDF (Ligne 225) ---
+    # Bouton de génération
     if st.button("🏗️ Préparer le rapport PDF"):
-        with st.spinner("Génération..."):
+        with st.spinner("Génération du flux binaire..."):
             try:
-                # 1. Générer l'objet PDF
-                pdf = generate_pdf(choice_key, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
+                # 1. On appelle ta fonction
+                pdf_obj = generate_pdf(choice_key, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
                 
-                # 2. Convertir l'objet en BYTES (le format attendu par Streamlit)
-                # Si c'est FPDF2 :
-                pdf_bytes = pdf.output() 
-                
-                # Si c'est l'ancienne version FPDF :
-                # pdf_bytes = pdf.output(dest='S').encode('latin-1')
+                # 2. FORCE LA CONVERSION EN BYTES
+                if hasattr(pdf_obj, 'output'):
+                    # Si c'est un objet FPDF, on extrait les bytes
+                    final_pdf = pdf_obj.output(dest='S')
+                    # Si c'est du texte (ancienne version FPDF), on encode
+                    if isinstance(final_pdf, str):
+                        final_pdf = final_pdf.encode('latin-1', errors='ignore')
+                else:
+                    # Si c'est déjà autre chose, on s'assure que c'est des bytes
+                    final_pdf = bytes(pdf_obj) if not isinstance(pdf_obj, bytes) else pdf_obj
 
-                st.session_state['pdf_ready'] = pdf_bytes
-                st.success("✅ Rapport prêt !")
+                st.session_state['pdf_ready'] = final_pdf
+                st.success("✅ Rapport prêt à l'exportation.")
             except Exception as e:
-                st.error(f"Erreur : {e}")
+                st.error(f"Erreur technique : {e}")
 
-    # 3. Le bouton de téléchargement corrigé
+    # Bouton de téléchargement
     if st.session_state.get('pdf_ready') is not None:
         st.download_button(
             label="📥 Télécharger le Rapport PDF",
-            data=st.session_state['pdf_ready'], # Ici, ce sont des bytes maintenant
+            data=st.session_state['pdf_ready'],
             file_name=f"Rapport_{choice_key}.pdf",
-            mime="application/pdf"
+            mime="application/pdf",
+            key="download_pdf_btn" # Clé unique pour éviter les conflits
         )
