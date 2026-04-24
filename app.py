@@ -159,23 +159,21 @@ if not df.empty:
 
             m1, m2, m3, m4 = st.columns(4)
             
-            # Fonction de formatage pour éviter les crashs si GEE renvoie None
             def fmt(val):
-                return f"{val:.3f}" if (val is not None and isinstance(val, (int, float))) else "N/A"
+                return f"{val:.3f}" if (val is not None and isinstance(val, (int, float))) else "0.000"
 
             m1.metric("💧 NDWI", fmt(val_ndwi))
             m2.metric("🌫️ Turbidité", fmt(val_ndti))
             m3.metric("🌿 NDVI", fmt(val_ndvi))
-            m4.metric("📐 Surface", f"{w_surf:.2f} km²" if w_surf else "N/A")
+            m4.metric("📐 Surface", f"{w_surf:.2f} km²" if w_surf else "0.00 km²")
 
-            # --- LA CORRECTION D'INDENTATION EST ICI ---
             ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
             
             if ts is not None and not ts.empty:
                 fig = px.area(ts, x="date", y="NDWI", title="Historique Remplissage", color_discrete_sequence=['#00c9ff'])
                 st.plotly_chart(fig, use_container_width=True)
             else:
-                st.warning("📊 Aucune donnée historique trouvée pour cette période.")ly_chart(fig, width='stretch')
+                st.warning("📊 Aucune donnée historique trouvée pour cette période.")
 
     with tab1:
         from streamlit_folium import st_folium
