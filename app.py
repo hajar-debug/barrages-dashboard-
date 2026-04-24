@@ -164,18 +164,27 @@ with tab2:
     from processing.indices import get_timeseries
     
     
-    # --- BLOC DE SÉCURITÉ ---
-# On transforme les valeurs en texte pour éviter le crash si GEE renvoie 'None'
+   # --- BLOC DE SÉCURITÉ CORRIGÉ ---
+# On vérifie quel nom de variable tu as utilisé pour la surface
+# Si ta variable s'appelle 'surface', remplace 'surface_actuelle' par 'surface' ci-dessous
+
+try:
+    # On tente de récupérer la surface (on teste les deux noms courants)
+    s_val = surface_actuelle if 'surface_actuelle' in locals() else (surface if 'surface' in locals() else None)
+    
     disp_ndwi = f"{ndwi:.3f}" if (ndwi is not None and isinstance(ndwi, (int, float))) else "N/A"
     disp_ndti = f"{ndti:.3f}" if (ndti is not None and isinstance(ndti, (int, float))) else "N/A"
     disp_ndvi = f"{ndvi:.3f}" if (ndvi is not None and isinstance(ndvi, (int, float))) else "N/A"
-    disp_surf = f"{surface_actuelle:.2f}" if (surface_actuelle is not None and isinstance(surface_actuelle, (int, float))) else "0.00"
+    disp_surf = f"{s_val:.2f}" if (s_val is not None and isinstance(s_val, (int, float))) else "0.00"
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("💧 NDWI (Eau)", disp_ndwi)
     col2.metric("🌫️ Turbidité", disp_ndti)
     col3.metric("🌿 Végétation", disp_ndvi)
     col4.metric("📐 Surface", f"{disp_surf} km²")
+
+except Exception as e:
+    st.warning("Certaines métriques ne sont pas encore disponibles pour cette sélection.")
 # ------------------------
     # Graphique historique
     ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
