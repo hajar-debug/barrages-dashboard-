@@ -71,7 +71,8 @@ with st.sidebar:
         name_col = 'barrage' if 'barrage' in df.columns else df.columns[0]
         
         # On crée la liste pour le selectbox
-        barrage_display = sorted(df[name_col].dropna().str.upper().unique().tolist())
+        # On force en texte (.astype(str)) avant de mettre en majuscules
+        barrage_display = sorted(df[name_col].astype(str).str.upper().unique().tolist())
         choice_name = st.selectbox("🏞 Sélection du barrage :", barrage_display)
         
         # On récupère la ligne correspondante
