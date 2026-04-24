@@ -89,7 +89,7 @@ if not df.empty:
     st.markdown(f"""
     <div style='display:flex; justify-content:space-between; align-items:flex-end;'>
         <div>
-            <div class='dash-title'>سد {choice_name.title()}</div>
+            <div class='dash-title'>سد {choice_key.title()}</div>
             <div style='color:#1a4a7c; font-size:1.2rem; font-weight:600;'>Barrage {choice_name.title()}</div>
         </div>
         <div style='color:#6b7fa3; font-size:0.8rem; text-align:right;'>
