@@ -36,20 +36,20 @@ except Exception as e:
 @st.cache_data
 def load_barrages():
     try:
+        # Chargement CSV
         df_csv = pd.read_csv("Data/barrages.csv")
-        df_csv.columns = [str(c).strip().lower() for c in df_csv.columns]
-        df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
-
+        df_csv.columns = df_csv.columns.str.strip().lower()
+        df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().lower()
+        
+        # Chargement GeoJSON (Uniquement les barrages)
         gdf_sig = gpd.read_file("Data/barrages.geojson")
-        gdf_sig.columns = [str(c).strip().lower() for c in gdf_sig.columns]
-        col_geo = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
-        gdf_sig['barrage_key'] = gdf_sig[col_geo].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
-
-        # Fusion INNER pour ne garder que tes barrages cibles
-        df_final = gdf_sig.merge(df_csv, on="barrage_key", how="inner")
-        return df_final
+        gdf_sig.columns = gdf_sig.columns.str.strip().lower()
+        col_name = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
+        gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().lower()
+        
+        return gdf_sig.merge(df_csv, on="barrage_key", how="inner")
     except Exception as e:
-        st.error(f"Erreur de chargement : {e}")
+        st.error(f"Erreur fichiers : {e}")
         return pd.DataFrame()
 
 df = load_barrages()
