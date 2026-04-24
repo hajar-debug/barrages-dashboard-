@@ -222,30 +222,29 @@ with tab4:
         st.error("🚨 **Alerte** : Sécheresse critique.")
 
     # --- SECTION RAPPORT PDF (Ligne 225) ---
-    st.markdown("---")
     if st.button("🏗️ Préparer le rapport PDF"):
-        # Cette ligne DOIT être décalée par rapport au 'if'
         with st.spinner("Génération..."):
             try:
-                # On génère le PDF (Assure-toi que les variables existent)
-                pdf_output = generate_pdf(choice_key, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
+                # 1. Générer l'objet PDF
+                pdf = generate_pdf(choice_key, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
                 
-                # Extraction sécurisée des données binaires
-                if hasattr(pdf_output, 'output'):
-                    pdf_bytes = pdf_output.output(dest='S')
-                else:
-                    pdf_bytes = pdf_output
+                # 2. Convertir l'objet en BYTES (le format attendu par Streamlit)
+                # Si c'est FPDF2 :
+                pdf_bytes = pdf.output() 
                 
+                # Si c'est l'ancienne version FPDF :
+                # pdf_bytes = pdf.output(dest='S').encode('latin-1')
+
                 st.session_state['pdf_ready'] = pdf_bytes
                 st.success("✅ Rapport prêt !")
             except Exception as e:
-                st.error(f"Erreur de génération : {e}")
+                st.error(f"Erreur : {e}")
 
-    # Le bouton de téléchargement (aligné avec le premier 'if')
-    if st.session_state.get('pdf_ready'):
+    # 3. Le bouton de téléchargement corrigé
+    if st.session_state.get('pdf_ready') is not None:
         st.download_button(
             label="📥 Télécharger le Rapport PDF",
-            data=st.session_state['pdf_ready'],
+            data=st.session_state['pdf_ready'], # Ici, ce sont des bytes maintenant
             file_name=f"Rapport_{choice_key}.pdf",
             mime="application/pdf"
         )
