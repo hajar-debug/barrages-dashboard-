@@ -163,13 +163,20 @@ with tab1:
 with tab2:
     from processing.indices import get_timeseries
     
-    # Affichage des métriques déjà calculées en haut
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("💧 NDWI (Eau)", f"{ndwi:.3f}")
-    m2.metric("🌫️ Turbidité", f"{ndti:.3f}")
-    m3.metric("🌿 Végétation", f"{ndvi:.3f}")
-    m4.metric("📐 Surface", f"{water:.2f} km²")
+    
+    # --- BLOC DE SÉCURITÉ ---
+# On transforme les valeurs en texte pour éviter le crash si GEE renvoie 'None'
+    disp_ndwi = f"{ndwi:.3f}" if (ndwi is not None and isinstance(ndwi, (int, float))) else "N/A"
+    disp_ndti = f"{ndti:.3f}" if (ndti is not None and isinstance(ndti, (int, float))) else "N/A"
+    disp_ndvi = f"{ndvi:.3f}" if (ndvi is not None and isinstance(ndvi, (int, float))) else "N/A"
+    disp_surf = f"{surface_actuelle:.2f}" if (surface_actuelle is not None and isinstance(surface_actuelle, (int, float))) else "0.00"
 
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("💧 NDWI (Eau)", disp_ndwi)
+    col2.metric("🌫️ Turbidité", disp_ndti)
+    col3.metric("🌿 Végétation", disp_ndvi)
+    col4.metric("📐 Surface", f"{disp_surf} km²")
+# ------------------------
     # Graphique historique
     ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
     if ts is not None and not ts.empty:
