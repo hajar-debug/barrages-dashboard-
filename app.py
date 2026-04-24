@@ -36,55 +36,44 @@ except Exception as e:
 @st.cache_data
 def load_barrages():
     try:
-        # 1. On lit le CSV (C'est lui le chef)
         df_csv = pd.read_csv("Data/barrages.csv")
         df_csv.columns = [str(c).strip().lower() for c in df_csv.columns]
-        # On crée une clé propre : "Al Wahda" -> "alwahda"
         df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
 
-        # 2. On lit le GeoJSON des barrages
         gdf_sig = gpd.read_file("Data/barrages.geojson")
         gdf_sig.columns = [str(c).strip().lower() for c in gdf_sig.columns]
         col_geo = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
         gdf_sig['barrage_key'] = gdf_sig[col_geo].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
 
-        # 3. FUSION "INNER" : On ne garde que ce qui est dans ton CSV
-        # C'est cette ligne qui supprime les barrages en trop !
+        # Fusion INNER pour ne garder que tes barrages cibles
         df_final = gdf_sig.merge(df_csv, on="barrage_key", how="inner")
-        
         return df_final
     except Exception as e:
         st.error(f"Erreur de chargement : {e}")
         return pd.DataFrame()
+
 df = load_barrages()
 
 expert_facts = {
     "ALWAHDA": "Deuxième plus grand barrage d'Afrique, pilier de la régulation du Sebou.",
     "OUEDELMAKHAZINE": "Infrastructure stratégique pour la sécurité alimentaire du Gharb.",
-    "DARKHROUFA": "Ouvrage de nouvelle génération pour le développement agricole du Loukkos."
+    "DARKHROUFA": "Ouvrage de nouvelle génération pour le développement agricole du Loukkos.",
+    "MOULAYABDELLAH": "Barrage vital pour l'alimentation en eau potable de la région d'Agadir."
 }
 
 # ── Sidebar ──
 with st.sidebar:
     st.markdown("<div style='text-align:center; font-size:2.5rem;'>💧</div>", unsafe_allow_html=True)
     if not df.empty:
-        # On cherche la colonne qui contient les noms (souvent 'barrage')
         name_col = 'barrage' if 'barrage' in df.columns else df.columns[0]
-        
-        # On crée la liste pour le selectbox
-        # On force en texte (.astype(str)) avant de mettre en majuscules
         barrage_display = sorted(df[name_col].astype(str).str.upper().unique().tolist())
         choice_name = st.selectbox("🏞 Sélection du barrage :", barrage_display)
         
-        
-        # On force la colonne en texte avant de comparer avec le choix de l'utilisateur
         row = df[df[name_col].astype(str).str.upper() == choice_name].iloc[0]
         
-        # On récupère les coordonnées et la clé
         choice_key = str(row.get('barrage_key', '')).upper()
         lat = float(row.get('lat', row.get('latitude', 0)))
         lon = float(row.get('lon', row.get('longitude', 0)))
-
 
         st.markdown('---')
         start_date = st.date_input("📅 Début", value=pd.to_datetime("2024-01-01"))
@@ -101,15 +90,11 @@ with st.sidebar:
 if not df.empty:
     start_str, end_str = start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
     
-    # MODIF : Bounding Box au lieu du Cercle
-    delta = 0.08 if choice_key == "ALWAHDA" else 0.05
-    bbox = [[lat - delta, lon - delta], [lat + delta, lon + delta]]
-
     # 1. Header
     st.markdown(f"""
     <div style='display:flex; justify-content:space-between; align-items:flex-end;'>
         <div>
-            <div class='dash-title'>سد {row.get('barrage_x', choice_name)}</div>
+            <div class='dash-title'>سد {choice_name.title()}</div>
             <div style='color:#1a4a7c; font-size:1.2rem; font-weight:600;'>Barrage {choice_name.title()}</div>
         </div>
         <div style='color:#6b7fa3; font-size:0.8rem; text-align:right;'>
@@ -118,15 +103,22 @@ if not df.empty:
     </div>
     """, unsafe_allow_html=True)
     
-    # Correction affichage Province
-    st.info(f"**📍 Bassin :** {row.get('bassin','Inconnu')} | **Province :** {row.get('nom_provin', row.get('province','—'))}")
+    # Correction affichage métadonnées
+    def get_val(key):
+        v = row.get(key, '—')
+        return v if pd.notna(v) and v != '' else '—'
+
+    bassin = get_val('bassin')
+    province = get_val('nom_provin') if get_val('nom_provin') != '—' else get_val('province')
+    
+    st.info(f"**📍 Bassin :** {bassin} | **Province :** {province}")
 
     # 2. Note d'Expert
     fact = expert_facts.get(choice_key, "Infrastructure stratégique nationale.")
     st.markdown(f"""
     <div class="expert-note">
         <span style="color:#148337; font-weight:bold;">💡 ANALYSE STRATÉGIQUE</span><br>{fact}<br>
-        <small style="color:#6b7fa3;">Mis en service : {row.get('annee','—')} | Capacité : {row.get('capacite','—')} Mm³</small>
+        <small style="color:#6b7fa3;">Mis en service : {get_val('annee')} | Capacité : {get_val('capacite')} Mm³</small>
     </div>
     """, unsafe_allow_html=True)
 
@@ -134,22 +126,23 @@ if not df.empty:
     c1, c2 = st.columns([1.5, 1])
     with c1:
         if "image_url" in row and pd.notna(row["image_url"]):
-            st.image(row["image_url"], width='stretch')
-        else: st.info("📸 Image satellite non disponible")
+            st.image(row["image_url"], use_container_width=True)
+        else: 
+            st.info("📸 Image satellite fixe non disponible")
     with c2:
         st.subheader("🔍 Fiche Technique")
         st.markdown(f"""
-        **📍 Région :** {row.get('nom_region', '—')}  
-        **🏢 Province :** {row.get('nom_provin', '—')}  
-        **🌊 Bassin :** {row.get('bassin', '—')}  
-        **📏 Capacité :** {row.get('capacite', '—')} Mm³  
-        **💡 Usages :** {row.get('usage', '—')}
+        **📍 Région :** {get_val('nom_region')}  
+        **🏢 Province :** {province}  
+        **🌊 Bassin :** {bassin}  
+        **📏 Capacité :** {get_val('capacite')} Mm³  
+        **💡 Usages :** {get_val('usage')}
         """)
 
     # ── Tabs ──
     tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES SPECTRALES", "⚠️ RISQUES", "📄 RAPPORT"])
 
-    from processing.indices import get_metrics, water_surface, get_timeseries, get_water_surface_area, get_climate_data
+    from processing.indices import get_metrics, water_surface, get_timeseries
 
     with tab2:
         with st.spinner("Analyse GEE haute performance..."):
@@ -161,17 +154,13 @@ if not df.empty:
             val_ndvi = metrics.get('ndvi', 0) if metrics else 0
 
             m1, m2, m3, m4 = st.columns(4)
-            
-            def fmt(val):
-                return f"{val:.3f}" if (val is not None and isinstance(val, (int, float))) else "0.000"
-
+            def fmt(v): return f"{v:.3f}" if isinstance(v, (int, float)) else "0.000"
             m1.metric("💧 NDWI", fmt(val_ndwi))
             m2.metric("🌫️ Turbidité", fmt(val_ndti))
             m3.metric("🌿 NDVI", fmt(val_ndvi))
             m4.metric("📐 Surface", f"{w_surf:.2f} km²" if w_surf else "0.00 km²")
 
             ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
-            
             if ts is not None and not ts.empty:
                 fig = px.area(ts, x="date", y="NDWI", title="Historique Remplissage", color_discrete_sequence=['#00c9ff'])
                 st.plotly_chart(fig, use_container_width=True)
@@ -180,15 +169,14 @@ if not df.empty:
 
     with tab1:
         from streamlit_folium import st_folium
-        # Note: Dans build_map, assurez-vous de gérer le paramètre bbox au lieu de radius si vous l'avez modifié
         m = build_map(lat, lon, row, start_str, end_str, cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=10000)
         st_folium(m, width=1200, height=500)
 
     with tab3:
-        from processing.analysis import compute_risk, generate_alerts
+        from processing.analysis import compute_risk
         rl, rs = compute_risk(val_ndwi, val_ndvi, val_ndti)
         st.subheader(f"État du réservoir : {rl}")
-        st.progress(rs / 100)
+        st.progress(min(max(rs / 100, 0.0), 1.0))
         
         flood_risk = (val_ndwi + 0.1) * 100
         if flood_risk > 80: st.error(f"🚨 RISQUE CRITIQUE ({flood_risk:.1f}%)")
@@ -196,46 +184,26 @@ if not df.empty:
 
     with tab4:
         st.markdown("### 📄 Analyse Hydrologique & Rapport")
-        interpretation = ""
-        if ndwi is not None:
-            if ndwi > 0.15:
-                interpretation += "✅ **État de l'eau** : Remplissage élevé.\n\n"
-            elif ndwi > 0.02:
-                interpretation += "⚠️ **État de l'eau** : Niveau moyen.\n\n"
-            else:
-                interpretation += "🚨 **Alerte** : Sécheresse critique.\n\n"
+        if val_ndwi > 0.15: st.success("✅ **État de l'eau** : Remplissage élevé.")
+        elif val_ndwi > 0.02: st.warning("⚠️ **État de l'eau** : Niveau moyen.")
+        else: st.error("🚨 **Alerte** : Sécheresse critique.")
 
-
-
-
-       # --- SECTION RAPPORT PDF (Bien alignée sous tab2) ---
         st.markdown("---")
         if st.button("🏗️ Préparer le rapport PDF"):
             with st.spinner("Génération..."):
                 try:
-                    pdf_output = generate_pdf(choice, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti, fig=fig)
-                   
-                    if hasattr(pdf_output, 'output'):
-                        pdf_bytes = pdf_output.output(dest='S').encode('latin-1')
-                    elif isinstance(pdf_output, (bytearray, str)):
-                        pdf_bytes = bytes(pdf_output) if isinstance(pdf_output, bytearray) else pdf_output.encode('latin-1')
-                    else:
-                        pdf_bytes = pdf_output
-                   
-                    st.session_state['pdf_ready'] = pdf_bytes
+                    # On passe les bonnes variables calculées
+                    pdf_output = generate_pdf(choice_name, row, val_ndwi, val_ndvi, w_surf, rl, rs, "", start_str, end_str, val_ndti)
+                    st.session_state['pdf_ready'] = pdf_output.output(dest='S').encode('latin-1')
+                    st.success("✅ Rapport généré avec succès !")
                 except Exception as e:
-                    st.error(f"Erreur lors de la génération : {e}")
-                    st.session_state['pdf_ready'] = None
-
-
-
+                    st.error(f"Erreur PDF : {e}")
 
         if st.session_state.get('pdf_ready'):
             st.download_button(
                 label="📥 Télécharger le Rapport PDF",
                 data=st.session_state['pdf_ready'],
-                file_name=f"Rapport_{choice}.pdf",
+                file_name=f"Rapport_{choice_name}.pdf",
                 mime="application/pdf"
             )
-        else:
-            st.warning("⚠️ Le rapport PDF n'est pas encore prêt.")
+        
