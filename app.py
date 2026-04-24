@@ -34,33 +34,33 @@ except Exception as e:
 
 # ── LOAD DATA ──
 @st.cache_data
-@st.cache_data
 def load_barrages():
     try:
         # 1. Lecture du CSV
         df_csv = pd.read_csv("Data/barrages.csv")
-        
-        # Nettoyage des noms de colonnes (on utilise une liste en compréhension, c'est plus sûr)
         df_csv.columns = [str(c).strip().lower() for c in df_csv.columns]
         
-        # --- LA CORRECTION EST ICI (.str.lower()) ---
-        if 'barrage' in df_csv.columns:
-            df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
+        # On crée la clé de jointure proprement
+        # On cherche une colonne qui contient 'barrage' ou on prend la première
+        col_csv = 'barrage' if 'barrage' in df_csv.columns else df_csv.columns[0]
+        df_csv['barrage_key'] = df_csv[col_csv].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
         
         # 2. Lecture du GeoJSON
         gdf_sig = gpd.read_file("Data/barrages.geojson")
         gdf_sig.columns = [str(c).strip().lower() for c in gdf_sig.columns]
         
-        col_name = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
+        # On cherche la colonne nom dans le GeoJSON
+        col_geo = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
+        gdf_sig['barrage_key'] = gdf_sig[col_geo].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
         
-        # --- ET ICI AUSSI ---
-        gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
+        # 3. LA FUSION (On utilise barrage_key)
+        # On s'assure de garder TOUTES les colonnes du CSV
+        df_final = gdf_sig.merge(df_csv, on="barrage_key", how="left", suffixes=('', '_csv'))
         
-        # 3. Fusion
-        return gdf_sig.merge(df_csv, on="barrage_key", how="left")
+        return df_final
         
     except Exception as e:
-        st.error(f"Erreur lors du chargement des données : {e}")
+        st.error(f"Erreur technique : {e}")
         return pd.DataFrame()
 df = load_barrages()
 
