@@ -72,7 +72,7 @@ with st.sidebar:
         lon = float(row.get('lon', row.get('longitude', 0)))
 
         st.markdown('---')
-        start_date = st.date_input("📅 Début", value=pd.to_datetime("2024-01-01"))
+        start_date = st.date_input("📅 Début", value=pd.to_datetime("2020-01-01"))
         end_date = st.date_input("📅 Fin", value=datetime.now())
         cloud_pct = st.slider("☁️ Nuages max (%)", 0, 100, 30)
         
