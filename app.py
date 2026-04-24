@@ -85,19 +85,21 @@ with st.sidebar:
 if not df.empty:
     start_str, end_str = start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
     
-    # 1. Header
+   # --- SÉCURITÉ : On définit choice_name au cas où ---
+    choice_name = choice_key.title()
+
+    # 1. Header (CORRIGÉ)
     st.markdown(f"""
     <div style='display:flex; justify-content:space-between; align-items:flex-end;'>
         <div>
-            <div class='dash-title'>سد {choice_key.title()}</div>
-            <div style='color:#1a4a7c; font-size:1.2rem; font-weight:600;'>Barrage {choice_name.title()}</div>
+            <div class='dash-title'>سد {choice_name}</div>
+            <div style='color:#1a4a7c; font-size:1.2rem; font-weight:600;'>Barrage {choice_name}</div>
         </div>
         <div style='color:#6b7fa3; font-size:0.8rem; text-align:right;'>
             {lat:.4f}°N | {lon:.4f}°E | Zone BBox Active
         </div>
     </div>
     """, unsafe_allow_html=True)
-    
     # Correction affichage métadonnées
     def get_val(key):
         v = row.get(key, '—')
