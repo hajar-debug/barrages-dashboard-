@@ -215,35 +215,40 @@ with tab3:
 with tab4:
     st.markdown("### 📄 Analyse Hydrologique & Rapport")
     import io
+    from processing.analysis import compute_risk, generate_alerts
+
+    # 1. On définit les variables PAR DÉFAUT pour éviter l'erreur 'not defined'
+    r_label, r_score = compute_risk(ndwi, ndvi, ndti)
+    a_list = generate_alerts(ndwi, ndvi, water, ndti)
 
     if st.button("🏗️ Préparer le rapport PDF"):
-        with st.spinner("Encapsulation binaire..."):
+        with st.spinner("Génération binaire en cours..."):
             try:
-                # 1. Génération
-                pdf_obj = generate_pdf(choice_key, row, ndwi, ndvi, water, risk_label, risk_score, alerts_list, start_str, end_str, ndti)
+                # 2. Appel de la fonction avec les variables définies juste au-dessus
+                pdf_obj = generate_pdf(
+                    choice_key, row, ndwi, ndvi, water, 
+                    r_label, r_score, a_list, 
+                    start_str, end_str, ndti
+                )
                 
-                # 2. Conversion via BytesIO (C'est la méthode la plus compatible)
-                buf = io.BytesIO()
-                
-                # On essaie d'extraire le contenu
-                content = pdf_obj.output() 
-                if isinstance(content, str):
-                    content = content.encode('latin-1')
-                
-                buf.write(content)
-                buf.seek(0) # On remet le curseur au début
-                
-                st.session_state['pdf_ready'] = buf.getvalue()
-                st.success("✅ Rapport prêt !")
+                # 3. Extraction propre des données
+                output = pdf_obj.output()
+                if isinstance(output, str):
+                    pdf_bytes = output.encode('latin-1', errors='ignore')
+                else:
+                    pdf_bytes = output
+
+                st.session_state['pdf_ready'] = pdf_bytes
+                st.success("✅ Rapport généré avec succès !")
             except Exception as e:
                 st.error(f"Erreur technique : {e}")
 
-    # Le bouton de téléchargement utilise maintenant les données du buffer
-    if st.session_state.get('pdf_ready'):
+    # 4. Le bouton de téléchargement (Sécurisé)
+    if st.session_state.get('pdf_ready') is not None:
         st.download_button(
             label="📥 Télécharger le Rapport PDF",
             data=st.session_state['pdf_ready'],
-            file_name=f"Rapport_Barrage.pdf",
+            file_name=f"Rapport_{choice_key}.pdf",
             mime="application/pdf",
-            key="ultimate_btn_final"
+            key="final_stable_btn"
         )
