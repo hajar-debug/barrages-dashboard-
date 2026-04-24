@@ -109,34 +109,34 @@ with st.sidebar:
         row = df[df["barrage"] == choice].iloc[0]
         lat, lon = float(row["lat"]), float(row["lon"])
 # --- MINI-CARTE DE SITUATION (FOND CLAIR) ---
+        # --- MINI-CARTE DE SITUATION ---
         st.write("📍 **Localisation nationale**")
-        fig_loc = go.Figure(go.Scattermapbox(
-            lat=[lat], lon=[lon],
-            mode='markers',
-            marker=go.scattermapbox.Marker(size=14, color='#c1272d'),
-            text=[choice]
+         fig_loc = go.Figure(go.Scattermap( # Changé de Scattermapbox à Scattermap
+             lat=[lat], lon=[lon],
+             mode='markers',
+             marker=go.scattermap.Marker(size=14, color='#c1272d'),
+             text=[choice]
         ))
         fig_loc.update_layout(
-            mapbox_style="carto-positron", # FOND CLAIR ET VISIBLE
-            mapbox=dict(center=dict(lat=28.5, lon=-9.5), zoom=3.2),
-            margin={"r":0,"t":0,"l":0,"b":0}, height=250,
-            paper_bgcolor="white", 
-            plot_bgcolor="white"
+            maplibre_style="carto-positron", # Changé de mapbox_style à maplibre_style
+            mapmap=dict(center=dict(lat=28.5, lon=-9.5), zoom=3.2),
+            margin={"r":0,"t":0,"l":0,"b":0}, height=250
         )
-        st.plotly_chart(fig_loc, use_container_width=True, config={'displayModeBar': False})
 
-        st.markdown('<div class="section-title">📅 Période</div>', unsafe_allow_html=True)
-        start_date = st.date_input("Début", value=pd.to_datetime("2020-01-01"))
-        end_date = st.date_input("Fin", value=pd.to_datetime("2026-04-17"))
+         st.plotly_chart(fig_loc, width="stretch", config={'displayModeBar': False})
 
-        st.markdown('<div class="section-title">☁️ Filtre nuages</div>', unsafe_allow_html=True)
-        cloud_pct = st.slider("% nuages max", 0, 50, 20)
+         st.markdown('<div class="section-title">📅 Période</div>', unsafe_allow_html=True)
+         start_date = st.date_input("Début", value=pd.to_datetime("2020-01-01"))
+         end_date = st.date_input("Fin", value=pd.to_datetime("2026-04-17"))
 
-        st.markdown('<div class="section-title">🗺 Couches carte</div>', unsafe_allow_html=True)
-        show_ndwi  = st.checkbox("💧 NDWI (Eau)", value=True)
-        show_ndti  = st.checkbox("🌫️ NDTI (Turbidité)", value=True)
-        show_ndvi  = st.checkbox("🌿 NDVI (Végétation)", value=True)
-        show_rgb   = st.checkbox("📷 Satellite RGB", value=False)
+         st.markdown('<div class="section-title">☁️ Filtre nuages</div>', unsafe_allow_html=True)
+         cloud_pct = st.slider("% nuages max", 0, 50, 20)
+
+         st.markdown('<div class="section-title">🗺 Couches carte</div>', unsafe_allow_html=True)
+         show_ndwi  = st.checkbox("💧 NDWI (Eau)", value=True)
+         show_ndti  = st.checkbox("🌫️ NDTI (Turbidité)", value=True)
+         show_ndvi  = st.checkbox("🌿 NDVI (Végétation)", value=True)
+         show_rgb   = st.checkbox("📷 Satellite RGB", value=False)
 # ── MAIN INTERFACE ──
 if not df.empty:
     start_str = start_date.strftime("%Y-%m-%d") # On utilise le format année-mois-jour
@@ -188,7 +188,7 @@ if not df.empty:
     col_img, col_txt = st.columns([1.5, 1])
     with col_img:
         if "image_url" in row and pd.notna(row["image_url"]):
-            st.image(row["image_url"], use_container_width=True)
+            st.image(row["image_url"], width="stretch")
         else:
             st.info("📸 Image non disponible")
 
@@ -223,6 +223,9 @@ if not df.empty:
         with st.spinner("Calcul GEE en cours..."):
             # 1. Calcul des indices
             metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=5000)
+            st.write("--- DEBUG SYSTEM ---")
+            st.write(f"Metrics brut : {metrics}")
+            st.write(f"Type de metrics : {type(metrics)}")
             # Extraction sécurisée des résultats
             if metrics and isinstance(metrics, dict):
                 # Ajoute cette ligne temporaire pour debugger :
@@ -258,7 +261,7 @@ if not df.empty:
                 template="plotly_dark",
                 color_discrete_map={"NDWI": "#00c9ff", "Turbidité": "#ffa500"}
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width="stretch")
         else:
             st.warning("📊 Aucune donnée historique disponible.")
 
