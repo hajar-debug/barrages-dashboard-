@@ -1,11 +1,19 @@
 import folium
 from folium import plugins
 import ee 
-import geopandas as gpd # <--- Ajout crucial
+import geopandas as gpd
 
 def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=5000):
-    # 1. Zone d'intérêt (ROI) basée sur le radius dynamique
-    roi = ee.Geometry.Point([lon, lat]).buffer(radius)
+    # ── 1. ZONE D'INTÉRÊT (RECTANGLE / BBOX) ───────────────────────────
+    # On transforme le radius en degrés approximatifs pour créer un rectangle
+    # 0.01 degré ~ 1.1km. On adapte selon le barrage.
+    delta = 0.09 if radius > 12000 else 0.06
+    
+    # Géométrie pour Google Earth Engine (Rectangle)
+    roi = ee.Geometry.Rectangle([lon - delta, lat - delta, lon + delta, lat + delta])
+    
+    # Coordonnées pour l'affichage Folium (Bbox)
+    bbox_folium = [[lat - delta, lon - delta], [lat + delta, lon + delta]]
     
     # 2. Imports locaux
     from processing.indices import get_ndwi_tile_url, get_ndvi_tile_url, get_rgb_tile_url, get_ndti_tile_url
@@ -13,7 +21,7 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
     # 3. Initialisation de la carte
     m = folium.Map(
         location=[lat, lon],
-        zoom_start=13 if radius < 6000 else 11, # Zoom adaptatif selon la taille du barrage
+        zoom_start=12 if radius < 6000 else 10, 
         tiles=None,
     )
 
@@ -29,7 +37,6 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
 
     # ── 2. COUCHES SIG (VERSION SÉCURISÉE) ─────────────────────────────
     try:
-        # Affichage simple des Communes
         folium.GeoJson(
             "Data/communes.geojson",
             name="🏡 Limites Communales",
@@ -37,7 +44,6 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
             control=True
         ).add_to(m)
 
-        # Affichage simple des Provinces
         folium.GeoJson(
             "Data/provinces.geojson",
             name="🏢 Limites Provinciales",
@@ -48,36 +54,46 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
         print(f"Note: Couches SIG non chargées : {e}")
 
     # ── 3. COUCHES ANALYTIQUES GEE ─────────────────────────────────────
+    # Note : On passe maintenant la 'roi' rectangulaire aux fonctions
     
-    # NDTI (Turbidité)
     if show_ndti:
         url = get_ndti_tile_url(lat, lon, start, end, cloud) 
         if url:
             folium.TileLayer(tiles=url, attr='GEE', name='🌫️ Turbidité', overlay=True, opacity=0.7, show=False).add_to(m)
 
-    # NDWI (Eau) - CORRIGÉ AVEC MNDWI DANS INDICES.PY
     if show_ndwi:
         url = get_ndwi_tile_url(lat, lon, start, end, cloud) 
         if url:
             folium.TileLayer(tiles=url, attr='GEE', name='💧 Surface en Eau', overlay=True, opacity=0.8, show=True).add_to(m)
 
-    # NDVI (Végétation)
     if show_ndvi:
         url = get_ndvi_tile_url(lat, lon, start, end, cloud) 
         if url:
             folium.TileLayer(tiles=url, attr='GEE', name='🌿 Végétation', overlay=True, opacity=0.6, show=False).add_to(m)
 
-    # ── 4. INTERFACE & TOOLS ──────────────────────────────────────────
+    # ── 4. TRACÉ DU RECTANGLE DE RECHERCHE ────────────────────────────
+    folium.Rectangle(
+        bounds=bbox_folium,
+        color="#c1272d",
+        weight=2,
+        fill=True,
+        fill_opacity=0.05,
+        popup="Emprise de l'analyse Sentinel-2"
+    ).add_to(m)
+
+    # ── 5. INTERFACE & TOOLS ──────────────────────────────────────────
     folium.LayerControl(position='topright', collapsed=False).add_to(m)
     plugins.Fullscreen().add_to(m)
     plugins.MeasureControl(position='bottomleft').add_to(m)
     
-    # Marqueur stylisé pour le barrage
     nom = row.get('barrage', 'Barrage')
     folium.Marker(
         [lat, lon], 
         popup=f"<b>{nom}</b><br>Capacité: {row.get('capacite', '-')} Mm³",
         icon=folium.Icon(color='darkblue', icon='info-sign')
     ).add_to(m)
+
+    # Ajuster la vue automatiquement sur le rectangle
+    m.fit_bounds(bbox_folium)
 
     return m

@@ -18,54 +18,13 @@ st.set_page_config(
 # ── CSS Pro ──────────────────────────────
 st.markdown("""
 <style>
-    /* Fond de page blanc/gris très clair */
-    [data-testid="stAppViewContainer"] {
-        background-color: #ffffff !important;
-        color: #1a1a1a !important;
-    }
-
-
-    /* Sidebar claire */
-    [data-testid="stSidebar"] {
-        background-color: #f8f9fa !important;
-    }
-
-
-    /* Header Design Institutionnel */
-    .dash-title {
-        font-family: 'Inter', sans-serif;
-        font-size: 2.8rem;
-        font-weight: 800;
-        color: #1a4a7c; /* Bleu profond */
-        border-bottom: 3px solid #c1272d; /* Ligne rouge Maroc */
-        padding-bottom: 10px;
-    }
-
-
-    /* Note d'Expert Style "Maroc Excellence" */
-    .expert-note {
-        background: #fff5f5;
-        border-right: 5px solid #148337; /* Vert Maroc */
-        border-left: 5px solid #c1272d;  /* Rouge Maroc */
-        padding: 20px;
-        border-radius: 10px;
-        margin: 20px 0;
-        color: #1a4a7c;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }
-
-
-    /* Métriques claires */
-    [data-testid="metric-container"] {
-        background: #ffffff !important;
-        border: 1px solid #e0e0e0 !important;
-        border-radius: 10px !important;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important;
-        color: #1a4a7c !important;
-    }
+    [data-testid="stAppViewContainer"] { background-color: #ffffff !important; color: #1a1a1a !important; }
+    [data-testid="stSidebar"] { background-color: #f8f9fa !important; }
+    .dash-title { font-family: 'Inter', sans-serif; font-size: 2.8rem; font-weight: 800; color: #1a4a7c; border-bottom: 3px solid #c1272d; padding-bottom: 10px; }
+    .expert-note { background: #fff5f5; border-right: 5px solid #148337; border-left: 5px solid #c1272d; padding: 20px; border-radius: 10px; margin: 20px 0; color: #1a4a7c; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    [data-testid="metric-container"] { background: #ffffff !important; border: 1px solid #e0e0e0 !important; border-radius: 10px !important; box-shadow: 0 2px 4px rgba(0,0,0,0.05) !important; color: #1a4a7c !important; }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ── Init GEE ──
 try:
@@ -77,76 +36,75 @@ except Exception as e:
 @st.cache_data
 def load_barrages():
     df_csv = pd.read_csv("Data/barrages.csv")
-    df_csv.columns = df_csv.columns.str.strip().str.lower()
-    df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower()
+    df_csv.columns = df_csv.columns.str.strip().lower()
+    # Nettoyage profond pour la fusion
+    df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().lower().str.replace(' ', '').str.replace('-', '')
     
     gdf_sig = gpd.read_file("Data/barrages.geojson")
-    gdf_sig.columns = gdf_sig.columns.str.strip().str.lower()
+    gdf_sig.columns = gdf_sig.columns.str.strip().lower()
     col_name = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
-    gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().str.lower()
+    gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().lower().str.replace(' ', '').str.replace('-', '')
     
-    return gdf_sig.merge(df_csv, on="barrage_key", how="inner")
+    return gdf_sig.merge(df_csv, on="barrage_key", how="left")
 
 df = load_barrages()
 
 expert_facts = {
-    "AL WAHDA": "Deuxième plus grand barrage d'Afrique, pilier de la régulation du Sebou.",
-    "OUED EL MAKHAZINE": "Infrastructure stratégique pour la sécurité alimentaire du Gharb.",
-    "S.M.B ABDELLAH": "Garant de l'approvisionnement en eau potable de l'axe Rabat-Casablanca.",
-    "DAR KHROUFA": "Ouvrage de nouvelle génération pour le développement agricole du Loukkos.",
-    "BIN EL OUIDANE": "Monument de l'hydroélectricité marocaine dans le Haut Atlas.",
-    "MOULAY ABDELLAH": "Ressource vitale pour le stress hydrique de la région Souss-Massa.",
-    "SIDI EL MAHJOUB": "Point d'eau crucial pour la résilience des zones arides du Sud."
+    "ALWAHDA": "Deuxième plus grand barrage d'Afrique, pilier de la régulation du Sebou.",
+    "OUEDELMAKHAZINE": "Infrastructure stratégique pour la sécurité alimentaire du Gharb.",
+    "DARKHROUFA": "Ouvrage de nouvelle génération pour le développement agricole du Loukkos."
 }
 
 # ── Sidebar ──
 with st.sidebar:
     st.markdown("<div style='text-align:center; font-size:2.5rem;'>💧</div>", unsafe_allow_html=True)
     if not df.empty:
-        barrage_list = sorted(df["barrage_key"].str.upper().unique().tolist())
-        choice_key = st.selectbox("🏞 Sélection du barrage :", barrage_list)
-        choice = choice_key.title()
+        # On utilise le nom propre pour l'affichage
+        barrage_display = sorted(df["barrage_x"].str.upper().unique().tolist())
+        choice_name = st.selectbox("🏞 Sélection du barrage :", barrage_display)
         
-        row = df[df["barrage_key"] == choice_key.lower()].iloc[0]
+        row = df[df["barrage_x"].str.upper() == choice_name].iloc[0]
+        choice_key = row["barrage_key"].upper()
         lat = float(row.get('lat', row.get('latitude', 0)))
         lon = float(row.get('lon', row.get('longitude', 0)))
 
         st.markdown('---')
-        start_date = st.date_input("📅 Début", value=pd.to_datetime("2020-01-01"))
+        start_date = st.date_input("📅 Début", value=pd.to_datetime("2024-01-01"))
         end_date = st.date_input("📅 Fin", value=datetime.now())
-        cloud_pct = st.slider("☁️ Nuages max (%)", 0, 100, 30) # Augmenté pour garantir des calculs
+        cloud_pct = st.slider("☁️ Nuages max (%)", 0, 100, 30)
         
         st.markdown('---')
-        show_ndwi  = st.checkbox("💧 NDWI (Eau)", value=True)
-        show_ndti  = st.checkbox("🌫️ NDTI (Turbidité)", value=True)
-        show_ndvi  = st.checkbox("🌿 NDVI (Végétation)", value=True)
-        show_rgb   = st.checkbox("📷 Satellite RGB", value=False)
+        show_ndwi = st.checkbox("💧 NDWI", value=True)
+        show_ndti = st.checkbox("🌫️ NDTI", value=True)
+        show_ndvi = st.checkbox("🌿 NDVI", value=False)
+        show_rgb  = st.checkbox("📷 Satellite RGB", value=False)
 
 # ── MAIN INTERFACE ──
 if not df.empty:
     start_str, end_str = start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
     
-    # Configuration du Rayon (ROI)
-    BUFFER_CONFIG = {"AL WAHDA": 15000, "OUED EL MAKHAZINE": 12000, "DAR KHROUFA": 8000}
-    current_radius = BUFFER_CONFIG.get(choice_key.upper(), 8000)
+    # MODIF : Bounding Box au lieu du Cercle
+    delta = 0.08 if choice_key == "ALWAHDA" else 0.05
+    bbox = [[lat - delta, lon - delta], [lat + delta, lon + delta]]
 
-    # 1. Header Institutionnel
+    # 1. Header
     st.markdown(f"""
     <div style='display:flex; justify-content:space-between; align-items:flex-end;'>
         <div>
-            <div class='dash-title'>سد {row.get('barrage', choice)}</div>
-            <div style='color:#1a4a7c; font-size:1.2rem; font-weight:600;'>Barrage {choice}</div>
+            <div class='dash-title'>سد {row.get('barrage_x', choice_name)}</div>
+            <div style='color:#1a4a7c; font-size:1.2rem; font-weight:600;'>Barrage {choice_name.title()}</div>
         </div>
         <div style='color:#6b7fa3; font-size:0.8rem; text-align:right;'>
-            {lat:.4f}°N | {lon:.4f}°E | ROI: {current_radius/1000}km
+            {lat:.4f}°N | {lon:.4f}°E | Zone BBox Active
         </div>
     </div>
     """, unsafe_allow_html=True)
     
+    # Correction affichage Province
     st.info(f"**📍 Bassin :** {row.get('bassin','Inconnu')} | **Province :** {row.get('nom_provin', row.get('province','—'))}")
 
     # 2. Note d'Expert
-    fact = expert_facts.get(choice_key.upper(), "Infrastructure stratégique nationale.")
+    fact = expert_facts.get(choice_key, "Infrastructure stratégique nationale.")
     st.markdown(f"""
     <div class="expert-note">
         <span style="color:#148337; font-weight:bold;">💡 ANALYSE STRATÉGIQUE</span><br>{fact}<br>
@@ -158,164 +116,58 @@ if not df.empty:
     c1, c2 = st.columns([1.5, 1])
     with c1:
         if "image_url" in row and pd.notna(row["image_url"]):
-            st.image(row["image_url"], use_container_width=True)
-        else:
-            st.info("📸 Image satellite non disponible")
+            st.image(row["image_url"], width='stretch')
+        else: st.info("📸 Image satellite non disponible")
     with c2:
         st.subheader("🔍 Fiche Technique")
         st.markdown(f"""
         **📍 Région :** {row.get('nom_region', '—')}  
         **🏢 Province :** {row.get('nom_provin', '—')}  
-        **🏡 Commune :** {row.get('nom_commun', '—')}  
         **🌊 Bassin :** {row.get('bassin', '—')}  
         **📏 Capacité :** {row.get('capacite', '—')} Mm³  
         **💡 Usages :** {row.get('usage', '—')}
-        - **Type :** {row.get('type', 'Poids/Terre')}
         """)
 
     # ── Tabs ──
     tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES SPECTRALES", "⚠️ RISQUES", "📄 RAPPORT"])
 
+    from processing.indices import get_metrics, water_surface, get_timeseries, get_water_surface_area, get_climate_data
+
+    with tab2:
+        with st.spinner("Analyse GEE haute performance..."):
+            metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=10000)
+            w_surf = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=10000)
+            
+            val_ndwi = metrics.get('ndwi', 0) if metrics else 0
+            val_ndti = metrics.get('ndti', 0) if metrics else 0
+            val_ndvi = metrics.get('ndvi', 0) if metrics else 0
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("💧 NDWI", f"{val_ndwi:.3f}")
+            m2.metric("🌫️ Turbidité", f"{val_ndti:.3f}")
+            m3.metric("🌿 NDVI", f"{val_ndvi:.3f}")
+            m4.metric("📐 Surface", f"{w_surf:.2f} km²")
+
+            ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
+            if ts is not None and not ts.empty:
+                fig = px.area(ts, x="date", y="NDWI", title="Historique Remplissage", color_discrete_sequence=['#00c9ff'])
+                st.plotly_chart(fig, width='stretch')
 
     with tab1:
         from streamlit_folium import st_folium
-        m = build_map(
-            lat, lon, row, start_str, end_str,
-            cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=current_radius
-        )
-        st_folium(m, width='stretch')
-
-
-    with tab2:
-        from processing.indices import get_metrics, water_surface, get_timeseries, get_water_surface_area, get_climate_data
-       
-        # --- INITIALISATION ---
-        ndwi, ndvi, ndti = None, None, None
-       
-        with st.spinner("Calcul GEE en cours..."):
-            # 1. Calcul des indices
-            metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=5000)
-            st.write("--- DEBUG SYSTEM ---")
-            st.write(f"Metrics brut : {metrics}")
-            st.write(f"Type de metrics : {type(metrics)}")
-            # Extraction sécurisée des résultats
-            if metrics and isinstance(metrics, dict):
-                # Ajoute cette ligne temporaire pour debugger :
-                # st.write("Clés reçues :", metrics.keys())
-               
-                ndwi = metrics.get('ndwi') or metrics.get('nd')
-                ndvi = metrics.get('ndvi') or metrics.get('nd_1')
-                ndti = metrics.get('ndti') or metrics.get('nd_2')
-           
-            # 2. Calcul de la surface (UNE SEULE FOIS avec le radius)
-            # Supprime la deuxième ligne "water =" qui n'avait pas le radius
-            water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=5000)
-
-
-        # Nouveau design des colonnes de métriques
-        c1, c2, c3, c4 = st.columns(4)
-        with c1:
-            st.metric(label="💧 Indice d'Eau", value=f"{ndwi:.3f}" if ndwi else "N/A", help="NDWI : Plus il est haut, plus la présence d'eau est confirmée.")
-        with c2:
-            st.metric(label="🌫️ Turbidité", value=f"{ndti:.3f}" if ndti else "N/A", help="NDTI : Mesure la clarté de l'eau.")
-        with c3:
-            st.metric(label="🌿 Santé Berges", value=f"{ndvi:.3f}" if ndvi else "N/A", help="NDVI : État de la végétation environnante.")
-        with c4:
-            st.metric(label="📐 Surface Estimée", value=f"{water:.2f} km²" if water else "N/A")
-        st.markdown("### 📈 Évolution Temporelle")
-        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=5000)
-        fig = None
-       
-        if ts is not None and not ts.empty:
-            fig = px.line(
-                ts,
-                x="date",
-                y=["NDWI", "Turbidité"],
-                template="plotly_dark",
-                color_discrete_map={"NDWI": "#00c9ff", "Turbidité": "#ffa500"}
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.warning("📊 Aucune donnée historique disponible.")
-
-
-        st.markdown("### 🛰️ Bilan de Surface (Analyse Comparative)")
-        col_a, col_b = st.columns(2)
-       
-        with col_a:
-            surface_initiale = get_water_surface_area(lat, lon, "2020-01-01", cloud_pct)
-            st.metric("Surface Janvier 2020", f"{surface_initiale:.2f} km²" if surface_initiale else "N/A")
-       
-        with col_b:
-            surface_actuelle = water if water else 0
-            delta = surface_actuelle - (surface_initiale if surface_initiale else 0)
-            st.metric("Surface Actuelle", f"{surface_actuelle:.2f} km²", delta=f"{delta:.2f} km²")
-
-
-        if surface_actuelle < (surface_initiale if surface_initiale else 0):
-            st.warning(f"⚠️ Perte de surface liquide de {abs(delta):.2f} km² par rapport à 2020.")
-
-
-        st.markdown("### 🌡️ Contexte Climatique")
-        temp_actuelle = get_climate_data(lat, lon, end_str)
-        climat_df = pd.DataFrame({
-            "Indicateur": ["Température Moyenne", "Évapotranspiration (est.)", "État du Ciel"],
-            "Valeur": [f"{temp_actuelle:.1f} °C", "4.5 mm/jour", "Dégagé" if cloud_pct < 20 else "Nuageux"],
-            "Impact": ["Normal", "Risque de perte d'eau", "Optimale"]
-        })
-        st.table(climat_df)
-
+        # Note: Dans build_map, assurez-vous de gérer le paramètre bbox au lieu de radius si vous l'avez modifié
+        m = build_map(lat, lon, row, start_str, end_str, cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=10000)
+        st_folium(m, width=1200, height=500)
 
     with tab3:
         from processing.analysis import compute_risk, generate_alerts
-        rl, rs = compute_risk(ndwi, ndvi, ndti)
-        al = generate_alerts(ndwi, ndvi, water, ndti)
-       
+        rl, rs = compute_risk(val_ndwi, val_ndvi, val_ndti)
         st.subheader(f"État du réservoir : {rl}")
         st.progress(rs / 100)
-       
-        st.subheader("🌊 Alerte Prédictive Inondation")
-        flood_risk = (ndwi + 0.1) * 100 if ndwi else 0
-        if flood_risk > 80:
-            st.error(f"🚨 RISQUE CRITIQUE ({flood_risk:.1f}%) : Capacité maximale atteinte.")
-        elif flood_risk > 50:
-            st.warning(f"⚠️ VIGILANCE ({flood_risk:.1f}%) : Niveau élevé.")
-        else:
-            st.success(f"✅ RISQUE FAIBLE ({flood_risk:.1f}%)")
-
-
-        st.markdown("### 🏥 Bilan de Santé du Réservoir")
-        h1, h2, h3 = st.columns(3)
-        with h1:
-            st.write("**💧 Remplissage**")
-            # On ajoute "ndwi is not None" pour éviter le crash
-            if ndwi is not None and ndwi > 0.15:
-                st.success("Excellent")
-            elif ndwi is not None:
-                st.error("Critique")
-            else:
-                st.warning("Indisponible")
-
-
-        with h2:
-            st.write("**🌫️ Qualité**")
-            if ndti is not None and ndti < 0.05:
-                st.success("Claire")
-            elif ndti is not None:
-                st.warning("Turbide")
-            else:
-                st.warning("Indisponible")
-        with h3:
-            st.write("**🌿 Berges**")
-            # On vérifie si ndvi existe AVANT de comparer
-            if ndvi is not None:
-                if ndvi > 0.25:
-                    st.success("Stable")
-                else:
-                    st.warning("Érosion / Faible")
-            else:
-                st.info("Donnée N/A")
-
+        
+        flood_risk = (val_ndwi + 0.1) * 100
+        if flood_risk > 80: st.error(f"🚨 RISQUE CRITIQUE ({flood_risk:.1f}%)")
+        else: st.success(f"✅ RISQUE FAIBLE ({flood_risk:.1f}%)")
 
     with tab4:
         st.markdown("### 📄 Analyse Hydrologique & Rapport")
@@ -327,6 +179,8 @@ if not df.empty:
                 interpretation += "⚠️ **État de l'eau** : Niveau moyen.\n\n"
             else:
                 interpretation += "🚨 **Alerte** : Sécheresse critique.\n\n"
+
+
 
 
        # --- SECTION RAPPORT PDF (Bien alignée sous tab2) ---
@@ -347,6 +201,8 @@ if not df.empty:
                 except Exception as e:
                     st.error(f"Erreur lors de la génération : {e}")
                     st.session_state['pdf_ready'] = None
+
+
 
 
         if st.session_state.get('pdf_ready'):
