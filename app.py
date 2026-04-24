@@ -36,24 +36,15 @@ except Exception as e:
 @st.cache_data
 def load_barrages():
     try:
-        # 1. Chargement du CSV
-        df_csv = pd.read_csv("Data/barrages.csv")
-        # CORRECTION ICI : on ajoute .str avant .lower()
-        df_csv.columns = df_csv.columns.str.strip().str.lower()
-        df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower()
+        # On charge uniquement le CSV (Plus besoin de GeoJSON)
+        df = pd.read_csv("Data/barrages.csv")
+        df.columns = df.columns.str.strip().str.lower()
         
-        # 2. Chargement du GeoJSON
-        gdf_sig = gpd.read_file("Data/barrages.geojson")
-        # CORRECTION ICI AUSSI
-        gdf_sig.columns = gdf_sig.columns.str.strip().str.lower()
-        
-        col_name = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
-        gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().str.lower()
-        
-        # 3. Fusion
-        return gdf_sig.merge(df_csv, on="barrage_key", how="inner")
+        # Nettoyage des noms pour la recherche
+        df['barrage_key'] = df['barrage'].astype(str).str.strip().str.lower()
+        return df
     except Exception as e:
-        st.error(f"Erreur fichiers : {e}")
+        st.error(f"Erreur de lecture du fichier CSV : {e}")
         return pd.DataFrame()
 
 df = load_barrages()
@@ -67,15 +58,15 @@ expert_facts = {
 
 # ── Sidebar ──
 with st.sidebar:
-    st.markdown("<div style='text-align:center; font-size:2.5rem;'>💧</div>", unsafe_allow_html=True)
+    st.title("💧 Configuration")
     if not df.empty:
-        name_col = 'barrage' if 'barrage' in df.columns else df.columns[0]
-        barrage_display = sorted(df[name_col].astype(str).str.upper().unique().tolist())
-        choice_name = st.selectbox("🏞 Sélection du barrage :", barrage_display)
+        barrage_list = sorted(df["barrage_key"].str.upper().unique().tolist())
+        choice_key = st.selectbox("🏞 Sélection du barrage :", barrage_list)
         
-        row = df[df[name_col].astype(str).str.upper() == choice_name].iloc[0]
+        # Récupération sécurisée des données de la ligne
+        row = df[df["barrage_key"] == choice_key.lower()].iloc[0]
         
-        choice_key = str(row.get('barrage_key', '')).upper()
+        # Gestion des noms de colonnes lat/lon (flexibilité)
         lat = float(row.get('lat', row.get('latitude', 0)))
         lon = float(row.get('lon', row.get('longitude', 0)))
 
