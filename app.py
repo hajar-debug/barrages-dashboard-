@@ -217,34 +217,33 @@ with tab4:
     import io
 
     if st.button("🏗️ Préparer le rapport PDF"):
-        with st.spinner("Extraction binaire..."):
+        with st.spinner("Encapsulation binaire..."):
             try:
-                # 1. On génère l'objet PDF
-                pdf = generate_pdf(choice_key, row, ndwi, ndvi, water, risk_label, risk_score, alerts_list, start_str, end_str, ndti)
+                # 1. Génération
+                pdf_obj = generate_pdf(choice_key, row, ndwi, ndvi, water, risk_label, risk_score, alerts_list, start_str, end_str, ndti)
                 
-                # 2. On transforme le PDF en bytes de manière universelle
-                # On essaie d'abord la méthode fpdf2 (la plus courante)
-                pdf_output = pdf.output()
+                # 2. Conversion via BytesIO (C'est la méthode la plus compatible)
+                buf = io.BytesIO()
                 
-                if isinstance(pdf_output, str):
-                    # Si c'est du texte (ancienne version), on convertit
-                    pdf_bytes = pdf_output.encode('latin-1', errors='ignore')
-                else:
-                    # Si c'est déjà des bytes, on les garde
-                    pdf_bytes = pdf_output
-
-                # On stocke dans le session_state
-                st.session_state['pdf_ready'] = pdf_bytes
+                # On essaie d'extraire le contenu
+                content = pdf_obj.output() 
+                if isinstance(content, str):
+                    content = content.encode('latin-1')
+                
+                buf.write(content)
+                buf.seek(0) # On remet le curseur au début
+                
+                st.session_state['pdf_ready'] = buf.getvalue()
                 st.success("✅ Rapport prêt !")
             except Exception as e:
                 st.error(f"Erreur technique : {e}")
 
-    # --- LE BOUTON DE TÉLÉCHARGEMENT ---
-    if 'pdf_ready' in st.session_state and st.session_state['pdf_ready'] is not None:
+    # Le bouton de téléchargement utilise maintenant les données du buffer
+    if st.session_state.get('pdf_ready'):
         st.download_button(
             label="📥 Télécharger le Rapport PDF",
             data=st.session_state['pdf_ready'],
-            file_name=f"Rapport_Barrage_{choice_key}.pdf",
+            file_name=f"Rapport_Barrage.pdf",
             mime="application/pdf",
-            key="final_v_100"
+            key="ultimate_btn_final"
         )
