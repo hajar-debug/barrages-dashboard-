@@ -110,19 +110,20 @@ with st.sidebar:
         lat, lon = float(row["lat"]), float(row["lon"])
 # --- MINI-CARTE DE SITUATION ---
         st.write("📍 **Localisation nationale**")
-        fig_loc = go.Figure(go.Scattermap(
+        fig_loc = go.Figure(go.Scattermapbox(
             lat=[lat], lon=[lon],
             mode='markers',
-            marker=go.scattermap.Marker(size=14, color='#c1272d'),
+            marker=go.scattermapbox.Marker(size=14, color='#c1272d'),
             text=[choice]
         ))
         fig_loc.update_layout(
-            maplibre_style="carto-positron",
-            map=dict(center=dict(lat=28.5, lon=-9.5), zoom=3.2),
-            margin={"r":0,"t":0,"l":0,"b":0}, height=250
+            mapbox_style="carto-positron", 
+            mapbox=dict(center=dict(lat=28.5, lon=-9.5), zoom=3.2),
+            margin={"r":0,"t":0,"l":0,"b":0}, 
+            height=250
         )
 
-        st.plotly_chart(fig_loc, width="stretch", config={'displayModeBar': False})
+        st.plotly_chart(fig_loc, use_container_width=True, config={'displayModeBar': False})
 
         st.markdown('<div class="section-title">📅 Période</div>', unsafe_allow_html=True)
         start_date = st.date_input("Début", value=pd.to_datetime("2020-01-01"))
