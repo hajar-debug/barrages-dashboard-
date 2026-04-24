@@ -153,10 +153,10 @@ tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES SPECTRALES", "⚠
 
 with tab1:
     from streamlit_folium import st_folium
-    # Correction : on remplace current_radius par 10000
+    # Correction : on remplace current_radius par 15000
     m = build_map(
         lat, lon, row, start_str, end_str,
-        cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=10000
+        cloud_pct, show_ndwi, show_ndvi, show_rgb, show_ndti, radius=15000
     )
     st_folium(m, width='stretch')
 
