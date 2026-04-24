@@ -135,16 +135,19 @@ if not df.empty:
         **📏 Capacité :** {get_val('capacite')} Mm³  
         **💡 Usages :** {get_val('usage')}
         """)
-    with st.spinner("Analyse GEE haute performance..."):
+    # --- ÉTAPE DE CALCUL (Ligne 138) ---
+with st.spinner("Analyse GEE haute performance..."):
+    # Appuie sur la touche TAB une fois au début de chaque ligne ci-dessous :
     metrics = get_metrics(lat, lon, start_str, end_str, cloud_pct, radius=10000)
     water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=10000)
     
-    # On met à jour nos variables de sécurité avec les vraies valeurs
+    # On récupère les valeurs pour les onglets
     ndwi = metrics.get('ndwi', 0) if metrics else 0
     ndti = metrics.get('ndti', 0) if metrics else 0
-    ndvi = metrics.get('ndvi', 0) if metrics else 0 
-    # ── Tabs ──
-    tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES SPECTRALES", "⚠️ RISQUES", "📄 RAPPORT"])
+    ndvi = metrics.get('ndvi', 0) if metrics else 0
+
+# --- FIN DU BLOC (Retour à la marge de gauche) ---
+tab1, tab2, tab3, tab4 = st.tabs(["🗺 CARTE", "📊 ANALYSES SPECTRALES", "⚠️ RISQUES", "📄 RAPPORT"])
 
     with tab1:
         from streamlit_folium import st_folium
