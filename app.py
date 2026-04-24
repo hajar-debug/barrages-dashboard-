@@ -68,23 +68,25 @@ except Exception as e:
     st.error(f"Erreur GEE : {e}")
 
 # ── LOAD DATA ──
+# ── LOAD DATA ──
 @st.cache_data
 def load_barrages():
-    # 1. Charger le CSV et normaliser les noms de colonnes immédiatement
+    # 1. Charger le CSV et normaliser
     df_csv = pd.read_csv("Data/barrages.csv")
-    df_csv.columns = df_csv.columns.str.strip().str.lower() # Met 'Barrage' en 'barrage'
+    df_csv.columns = df_csv.columns.str.strip().str.lower()
+    df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower()
     
-    # Création de la clé de fusion
-    df_csv['barrage_key'] = df_csv['barrage'].str.strip().str.lower()
-    
-    # 2. Charger le GeoJSON et normaliser ses colonnes
+    # 2. Charger le GeoJSON et normaliser
     gdf_sig = gpd.read_file("Data/barrages.geojson")
     gdf_sig.columns = gdf_sig.columns.str.strip().str.lower()
     
-    # Création de la clé de fusion pour le SIG
-    # Si ta colonne dans QGIS s'appelle 'nom', le code ci-dessous la trouvera car on a tout mis en minuscules
-   col_name = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
-   gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().str.lower() 
+    # CORRECTION ICI : Bien aligné avec 4 espaces
+    if 'barrage' in gdf_sig.columns:
+        col_name = 'barrage'
+    else:
+        col_name = gdf_sig.columns[0]
+        
+    gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().str.lower()
     
     # 3. Fusion
     df_combined = gdf_sig.merge(df_csv, on="barrage_key", how="inner")
