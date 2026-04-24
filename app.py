@@ -62,6 +62,14 @@ def load_barrages():
     except Exception as e:
         st.error(f"Erreur technique : {e}")
         return pd.DataFrame()
+# ... (reste du code de fusion)
+        df_final = gdf_sig.merge(df_csv, on="barrage_key", how="left")
+
+        # AJOUTE CETTE LIGNE ICI :
+        # On ne garde que les barrages qui existent dans le CSV (ceux qui ont une capacité connue par exemple)
+        df_final = df_final[df_final['barrage_key'].isin(df_csv['barrage_key'])]
+
+        return df_final
 df = load_barrages()
 
 expert_facts = {
