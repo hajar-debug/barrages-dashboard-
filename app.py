@@ -36,24 +36,25 @@ except Exception as e:
 @st.cache_data
 def load_barrages():
     try:
-        # 1. Charger le CSV d'abord (tes choix)
+        # 1. On lit le CSV (C'est lui le chef)
         df_csv = pd.read_csv("Data/barrages.csv")
         df_csv.columns = [str(c).strip().lower() for c in df_csv.columns]
+        # On crée une clé propre : "Al Wahda" -> "alwahda"
         df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
 
-        # 2. Charger le GeoJSON (tous les barrages du Maroc)
+        # 2. On lit le GeoJSON des barrages
         gdf_sig = gpd.read_file("Data/barrages.geojson")
         gdf_sig.columns = [str(c).strip().lower() for c in gdf_sig.columns]
         col_geo = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
         gdf_sig['barrage_key'] = gdf_sig[col_geo].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
 
-        # 3. FUSION INNER (On ne garde que ce qui est commun aux deux)
-        # C'est ça qui va supprimer les barrages en trop !
+        # 3. FUSION "INNER" : On ne garde que ce qui est dans ton CSV
+        # C'est cette ligne qui supprime les barrages en trop !
         df_final = gdf_sig.merge(df_csv, on="barrage_key", how="inner")
         
         return df_final
     except Exception as e:
-        st.error(f"Erreur : {e}")
+        st.error(f"Erreur de chargement : {e}")
         return pd.DataFrame()
 df = load_barrages()
 
@@ -75,8 +76,9 @@ with st.sidebar:
         barrage_display = sorted(df[name_col].astype(str).str.upper().unique().tolist())
         choice_name = st.selectbox("🏞 Sélection du barrage :", barrage_display)
         
-        # On récupère la ligne correspondante
-        row = df[df[name_col].str.upper() == choice_name].iloc[0]
+        
+        # On force la colonne en texte avant de comparer avec le choix de l'utilisateur
+        row = df[df[name_col].astype(str).str.upper() == choice_name].iloc[0]
         
         # On récupère les coordonnées et la clé
         choice_key = str(row.get('barrage_key', '')).upper()
