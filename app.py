@@ -121,7 +121,7 @@ with st.sidebar:
         st.markdown('<div class="section-title">🏞 Sélection</div>', unsafe_allow_html=True)
         # On utilise barrage_key qui est garantie d'exister après notre load_barrages
         barrage_list = sorted(df["barrage_key"].str.upper().unique().tolist())
-        choice_key = st.selectbox("Choisissez un barrage :", barrage_list, label_visibility="collapsed")
+        choice_key = st.selectbox("Choisissez un barrage :", barrage_list)
         choice = choice_key.title() # Pour l'affichage propre
 
         # 2. RÉCUPÉRATION SÉCURISÉE DE LA LIGNE (C'est ici que ça se joue)
@@ -201,7 +201,7 @@ current_radius = BUFFER_CONFIG.get(choice, DEFAULT_BUFFER)
 
 # ── Extraction données ──
 if not df.empty:
-    row = df[df["barrage"] == choice].iloc[0]
+    row = df[df["barrage_key"] == choice_key.lower()].iloc[0]
     lat, lon = float(row["lat"]), float(row["lon"])
     start_str, end_str = start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d")
 
