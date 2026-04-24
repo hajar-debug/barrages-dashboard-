@@ -214,42 +214,42 @@ with tab3:
 
 with tab4:
     st.markdown("### 📄 Analyse Hydrologique & Rapport")
-    if ndwi > 0.15:
-        st.success("✅ **État de l'eau** : Remplissage élevé.")
-    elif ndwi > 0.02:
-        st.warning("⚠️ **État de l'eau** : Niveau moyen.")
-    else:
-        st.error("🚨 **Alerte** : Sécheresse critique.")
+    
+    # 1. On s'assure que les variables de risque existent localement pour le PDF
+    from processing.analysis import compute_risk, generate_alerts
+    risk_label, risk_score = compute_risk(ndwi, ndvi, ndti)
+    alerts_list = generate_alerts(ndwi, ndvi, water, ndti)
 
     # Bouton de génération
     if st.button("🏗️ Préparer le rapport PDF"):
         with st.spinner("Génération du flux binaire..."):
             try:
-                # 1. On appelle ta fonction
-                pdf_obj = generate_pdf(choice_key, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
+                # 2. Appel avec les bons noms de variables locales
+                pdf_obj = generate_pdf(
+                    choice_key, row, ndwi, ndvi, water, 
+                    risk_label, risk_score, alerts_list, 
+                    start_str, end_str, ndti
+                )
                 
-                # 2. FORCE LA CONVERSION EN BYTES
+                # 3. Extraction des bytes (Correction du bug de téléchargement)
                 if hasattr(pdf_obj, 'output'):
-                    # Si c'est un objet FPDF, on extrait les bytes
                     final_pdf = pdf_obj.output(dest='S')
-                    # Si c'est du texte (ancienne version FPDF), on encode
                     if isinstance(final_pdf, str):
                         final_pdf = final_pdf.encode('latin-1', errors='ignore')
                 else:
-                    # Si c'est déjà autre chose, on s'assure que c'est des bytes
-                    final_pdf = bytes(pdf_obj) if not isinstance(pdf_obj, bytes) else pdf_obj
+                    final_pdf = pdf_obj
 
                 st.session_state['pdf_ready'] = final_pdf
-                st.success("✅ Rapport prêt à l'exportation.")
+                st.success("✅ Rapport généré !")
             except Exception as e:
-                st.error(f"Erreur technique : {e}")
+                st.error(f"Détail de l'erreur : {e}")
 
-    # Bouton de téléchargement
+    # 4. Bouton de téléchargement
     if st.session_state.get('pdf_ready') is not None:
         st.download_button(
             label="📥 Télécharger le Rapport PDF",
             data=st.session_state['pdf_ready'],
             file_name=f"Rapport_{choice_key}.pdf",
             mime="application/pdf",
-            key="download_pdf_btn" # Clé unique pour éviter les conflits
+            key="download_pdf_final"
         )
