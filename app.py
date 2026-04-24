@@ -74,14 +74,21 @@ expert_facts = {
 with st.sidebar:
     st.markdown("<div style='text-align:center; font-size:2.5rem;'>💧</div>", unsafe_allow_html=True)
     if not df.empty:
-        # On utilise le nom propre pour l'affichage
-        barrage_display = sorted(df["barrage_x"].str.upper().unique().tolist())
+        # On cherche la colonne qui contient les noms (souvent 'barrage')
+        name_col = 'barrage' if 'barrage' in df.columns else df.columns[0]
+        
+        # On crée la liste pour le selectbox
+        barrage_display = sorted(df[name_col].dropna().str.upper().unique().tolist())
         choice_name = st.selectbox("🏞 Sélection du barrage :", barrage_display)
         
-        row = df[df["barrage_x"].str.upper() == choice_name].iloc[0]
-        choice_key = row["barrage_key"].upper()
+        # On récupère la ligne correspondante
+        row = df[df[name_col].str.upper() == choice_name].iloc[0]
+        
+        # On récupère les coordonnées et la clé
+        choice_key = str(row.get('barrage_key', '')).upper()
         lat = float(row.get('lat', row.get('latitude', 0)))
         lon = float(row.get('lon', row.get('longitude', 0)))
+
 
         st.markdown('---')
         start_date = st.date_input("📅 Début", value=pd.to_datetime("2024-01-01"))
