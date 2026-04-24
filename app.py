@@ -91,8 +91,9 @@ def load_barrages():
     
     return df_combined
 
-# On remplace l'ancien 'df' par notre nouveau GeoDataFrame combiné
-df = load_combined_data()
+# Change load_combined_data() par load_barrages()
+df = load_barrages()
+
 
 # ── DICTIONNAIRE DE RÉPLIQUES (LIGNE 87) ──
 expert_facts = {
