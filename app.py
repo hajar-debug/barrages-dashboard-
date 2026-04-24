@@ -6,6 +6,7 @@ import geopandas as gpd
 from processing.gee_init import init_gee
 from report.report_generator import generate_pdf
 from datetime import datetime
+from processing.indices import get_metrics, water_surface, get_timeseries
 from processing.maps import build_map
 
 st.set_page_config(
