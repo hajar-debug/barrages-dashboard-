@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+import geopandas as gpd
 from processing.gee_init import init_gee
 from report.report_generator import generate_pdf
 from datetime import datetime
@@ -68,13 +69,23 @@ except Exception as e:
 
 # ── LOAD DATA ──
 @st.cache_data
-def load_barrages():
-    df_load = pd.read_csv("Data/barrages.csv")
-    # Cette ligne est MAGIQUE : elle nettoie tous les noms de colonnes
-    df_load.columns = df_load.columns.str.strip().str.lower() 
-    return df_load
+def load_combined_data():
+    # 1. Charger le CSV (avec tes photos et descriptions)
+    df_csv = pd.read_csv("Data/barrages.csv")
+    df_csv.columns = df_csv.columns.str.strip().str.lower()
+    
+    # 2. Charger le GeoJSON (pour la précision QGIS)
+    gdf_sig = gpd.read_file("Data/barrages.geojson")
+    gdf_sig.columns = gdf_sig.columns.str.strip().str.lower()
+    
+    # 3. Fusionner les deux sur la colonne 'barrage'
+    # On garde toutes les colonnes du CSV + la géométrie du SIG
+    combined = gdf_sig.merge(df_csv, on="barrage", how="inner")
+    
+    return combined
 
-df = load_barrages()
+# On remplace l'ancien 'df' par notre nouveau GeoDataFrame combiné
+df = load_combined_data()
 
 # ── DICTIONNAIRE DE RÉPLIQUES (LIGNE 87) ──
 expert_facts = {
@@ -237,7 +248,7 @@ if not df.empty:
             
             # 2. Calcul de la surface (UNE SEULE FOIS avec le radius)
             # Supprime la deuxième ligne "water =" qui n'avait pas le radius
-            water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=5000)
+            water = water_surface(lat, lon, start_str, end_str, cloud_pct, radius=current_radius)
 
         # Nouveau design des colonnes de métriques
         c1, c2, c3, c4 = st.columns(4) 

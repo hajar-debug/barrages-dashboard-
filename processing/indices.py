@@ -1,20 +1,18 @@
 import ee
 import pandas as pd
+import streamlit as st
 
-def get_base_collection(lat, lon, start, end, cloud_pct):
-    """Récupère la collection Sentinel-2 sur une Bounding Box de ~25km."""
-    # Bounding Box : environ 0.12 degré autour du point
-    roi = ee.Geometry.Rectangle([
-        lon - 0.12, lat - 0.12, 
-        lon + 0.12, lat + 0.12
-    ])
+def get_base_collection(lat, lon, start, end, cloud_pct, radius=8000):
+    """Récupère la collection Sentinel-2 optimisée pour le calcul de surface."""
+    roi = ee.Geometry.Point([lon, lat]).buffer(radius)
     
-    return (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+    col = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             .filterBounds(roi)
             .filterDate(start, end)
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud_pct))
             .median()
             .clip(roi))
+    return col
 
 # --- NOUVEAU : INDICE DE TURBIDITÉ (NDTI) ---
 # Dans processing/indices.py
@@ -99,18 +97,29 @@ def get_metrics(lat, lon, start_date, end_date, cloud_pct, radius=5000):
         return {"ndwi": None, "ndvi": None, "ndti": None}
 
 def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
-    """Calcule la surface de la retenue en km²."""
+    """Calcule la surface avec le seuil MNDWI corrigé pour le Maroc."""
     try:
-        # Utilise la variable radius ici si tu veux qu'elle soit dynamique
-        roi = ee.Geometry.Point([lon, lat]).buffer(radius).bounds() 
-        img = get_base_collection(lat, lon, start, end, cloud_pct)
-        ndwi = img.normalizedDifference(['B3', 'B8'])
-        water_mask = ndwi.gt(0.1)
+        roi = ee.Geometry.Point([lon, lat]).buffer(radius)
+        
+        # On récupère l'image médiane
+        img = get_base_collection(lat, lon, start, end, cloud_pct, radius)
+        
+        # MNDWI (B3, B11) est plus robuste que le NDWI classique pour les sédiments
+        mndwi = img.normalizedDifference(['B3', 'B11']).rename('mndwi')
+        
+        # SEUIL CRITIQUE : On passe à 0.0 pour ne pas perdre de surface en hiver
+        water_mask = mndwi.gt(0.0) 
+        
         area_m2 = water_mask.multiply(ee.Image.pixelArea()).reduceRegion(
-            reducer=ee.Reducer.sum(), geometry=roi, scale=20, maxPixels=1e9
-        ).get('nd').getInfo()
-        return area_m2 / 1e6
-    except: return None
+            reducer=ee.Reducer.sum(), 
+            geometry=roi, 
+            scale=20, 
+            maxPixels=1e9
+        ).get('mndwi').getInfo()
+        
+        return area_m2 / 1e6 if area_m2 else 0
+    except Exception as e:
+        return 0
 
 def get_timeseries(lat, lon, start, end, cloud, radius=8000):
     # On utilise maintenant le radius pour créer la zone d'étude
@@ -228,3 +237,8 @@ def get_climate_data(lat, lon, date_str):
     # Conversion Kelvin en Celsius
     temp_c = temp_img.reduceRegion(ee.Reducer.first(), roi, 1000).get('temperature_2m')
     return float(temp_c.getInfo()) - 273.15
+
+@st.cache_data(ttl=3600) # Garde les résultats en mémoire 1 heure
+def get_metrics_cached(lat, lon, start, end, cloud):
+    return get_metrics(lat, lon, start, end, cloud)
+    
