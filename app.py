@@ -83,7 +83,8 @@ def load_barrages():
     
     # Création de la clé de fusion pour le SIG
     # Si ta colonne dans QGIS s'appelle 'nom', le code ci-dessous la trouvera car on a tout mis en minuscules
-    gdf_sig['barrage_key'] = gdf_sig['barrage'].str.strip().str.lower()
+   col_name = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
+   gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().str.lower() 
     
     # 3. Fusion
     df_combined = gdf_sig.merge(df_csv, on="barrage_key", how="inner")
@@ -116,16 +117,24 @@ with st.sidebar:
 
     if not df.empty:
         st.markdown('<div class="section-title">🏞 Sélection</div>', unsafe_allow_html=True)
-        barrage_list = df["barrage"].dropna().unique().tolist()
-        choice = st.selectbox("Choisissez un barrage :", barrage_list, label_visibility="collapsed")
+        # On utilise barrage_key qui est garantie d'exister après notre load_barrages
+        barrage_list = sorted(df["barrage_key"].str.upper().unique().tolist())
+        choice_key = st.selectbox("Choisissez un barrage :", barrage_list, label_visibility="collapsed")
+        choice = choice_key.title() # Pour l'affichage propre
+
+        # 2. RÉCUPÉRATION SÉCURISÉE DE LA LIGNE (C'est ici que ça se joue)
+        # On cherche la ligne qui correspond au choix
+        row = df[df["barrage_key"] == choice_key.lower()].iloc[0]
+        
+        # On extrait lat/lon avec des noms de secours (lat ou latitude)
+        lat = float(row.get('lat', row.get('latitude', 0)))
+        lon = float(row.get('lon', row.get('longitude', 0)))
     
         # On donne une valeur par défaut pour que Python ne dise plus "not defined"
         ndwi, ndvi, ndti = None, None, None
         surface_actuelle = 0
         interpretation = ""
-        # Ajoute ces deux lignes ici :
-        row = df[df["barrage"] == choice].iloc[0]
-        lat, lon = float(row["lat"]), float(row["lon"])
+        
 # --- MINI-CARTE DE SITUATION ---
         st.write("📍 **Localisation nationale**")
         fig_loc = go.Figure(go.Scattermapbox(
