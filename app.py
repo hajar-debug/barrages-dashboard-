@@ -155,8 +155,12 @@ if not df.empty:
     
     # Header Expert
     st.markdown(f"<div class='dash-title'>Barrage {choice}</div>", unsafe_allow_html=True)
-    st.markdown(f"**Bassin Versant :** {row['bassin']} | **Province :** {row['nom_provin']}")
-    # --- AFFICHAGE DE LA RÉPLIQUE ---
+# On récupère les infos de manière sécurisée (si la colonne manque, ça n'affiche pas d'erreur)
+    bassin_nom = row.get('bassin', 'Inconnu')
+    province_nom = row.get('nom_provin', row.get('province', 'Inconnue'))
+
+    st.markdown(f"### 📍 Localisation")
+    st.info(f"**Bassin Versant :** {bassin_nom} | **Province :** {province_nom}")    # --- AFFICHAGE DE LA RÉPLIQUE ---
     fact = expert_facts.get(choice.upper(), "Infrastructure clé pour la stratégie nationale de l'eau.")
     st.markdown(f"""
     <div class="expert-note">
