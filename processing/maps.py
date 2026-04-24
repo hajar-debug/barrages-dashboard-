@@ -27,26 +27,25 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
         tiles='OpenStreetMap', name='🗺️ OpenStreetMap', overlay=False
     ).add_to(m)
 
-    # ── 2. COUCHES SIG (TES FICHIERS QGIS) ─────────────────────────────
-    # On ajoute les limites administratives au-dessus du satellite
+    # ── 2. COUCHES SIG (VERSION SÉCURISÉE) ─────────────────────────────
     try:
-        # Limites des Communes
+        # Affichage simple des Communes
         folium.GeoJson(
             "Data/communes.geojson",
             name="🏡 Limites Communales",
-            style_function=lambda x: {'fillColor': 'none', 'color': '#7f8c8d', 'weight': 1.2, 'dashArray': '4, 4'},
-            tooltip=folium.GeoJsonTooltip(fields=['nom_commun'], aliases=['Commune :'])
+            style_function=lambda x: {'fillColor': 'none', 'color': '#7f8c8d', 'weight': 1, 'dashArray': '4, 4'},
+            control=True
         ).add_to(m)
 
-        # Limites des Provinces
+        # Affichage simple des Provinces
         folium.GeoJson(
             "Data/provinces.geojson",
             name="🏢 Limites Provinciales",
             style_function=lambda x: {'fillColor': 'none', 'color': '#c1272d', 'weight': 2},
-            tooltip=folium.GeoJsonTooltip(fields=['nom_provin'], aliases=['Province :'])
+            control=True
         ).add_to(m)
     except Exception as e:
-        print(f"Erreur couches SIG : {e}")
+        print(f"Note: Couches SIG non chargées : {e}")
 
     # ── 3. COUCHES ANALYTIQUES GEE ─────────────────────────────────────
     
@@ -82,4 +81,3 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
     ).add_to(m)
 
     return m
-    
