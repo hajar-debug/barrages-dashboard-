@@ -59,7 +59,7 @@ expert_facts = {
 
 # ── Sidebar ──
 with st.sidebar:
-    st.title("💧 Configuration")
+    st.title("💧 Barrages ")
     if not df.empty:
         barrage_list = sorted(df["barrage_key"].str.upper().unique().tolist())
         choice_key = st.selectbox("🏞 Sélection du barrage :", barrage_list)
