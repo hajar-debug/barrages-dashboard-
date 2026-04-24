@@ -36,40 +36,25 @@ except Exception as e:
 @st.cache_data
 def load_barrages():
     try:
-        # 1. Lecture du CSV
+        # 1. Charger le CSV d'abord (tes choix)
         df_csv = pd.read_csv("Data/barrages.csv")
         df_csv.columns = [str(c).strip().lower() for c in df_csv.columns]
-        
-        # On crée la clé de jointure proprement
-        # On cherche une colonne qui contient 'barrage' ou on prend la première
-        col_csv = 'barrage' if 'barrage' in df_csv.columns else df_csv.columns[0]
-        df_csv['barrage_key'] = df_csv[col_csv].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
-        
-        # 2. Lecture du GeoJSON
+        df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
+
+        # 2. Charger le GeoJSON (tous les barrages du Maroc)
         gdf_sig = gpd.read_file("Data/barrages.geojson")
         gdf_sig.columns = [str(c).strip().lower() for c in gdf_sig.columns]
-        
-        # On cherche la colonne nom dans le GeoJSON
         col_geo = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
         gdf_sig['barrage_key'] = gdf_sig[col_geo].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
-        
-        # 3. LA FUSION (On utilise barrage_key)
-        # On s'assure de garder TOUTES les colonnes du CSV
-        df_final = gdf_sig.merge(df_csv, on="barrage_key", how="left", suffixes=('', '_csv'))
+
+        # 3. FUSION INNER (On ne garde que ce qui est commun aux deux)
+        # C'est ça qui va supprimer les barrages en trop !
+        df_final = gdf_sig.merge(df_csv, on="barrage_key", how="inner")
         
         return df_final
-        
     except Exception as e:
-        st.error(f"Erreur technique : {e}")
+        st.error(f"Erreur : {e}")
         return pd.DataFrame()
-# ... (reste du code de fusion)
-        df_final = gdf_sig.merge(df_csv, on="barrage_key", how="left")
-
-        # AJOUTE CETTE LIGNE ICI :
-        # On ne garde que les barrages qui existent dans le CSV (ceux qui ont une capacité connue par exemple)
-        df_final = df_final[df_final['barrage_key'].isin(df_csv['barrage_key'])]
-
-        return df_final
 df = load_barrages()
 
 expert_facts = {
@@ -172,12 +157,18 @@ if not df.empty:
             val_ndti = metrics.get('ndti', 0) if metrics else 0
             val_ndvi = metrics.get('ndvi', 0) if metrics else 0
 
-            m1, m2, m3, m4 = st.columns(4)
-            m1.metric("💧 NDWI", f"{val_ndwi:.3f}")
-            m2.metric("🌫️ Turbidité", f"{val_ndti:.3f}")
-            m3.metric("🌿 NDVI", f"{val_ndvi:.3f}")
-            m4.metric("📐 Surface", f"{w_surf:.2f} km²")
+# Affichage sécurisé des métriques
+        m1, m2, m3, m4 = st.columns(4)
+        
+        # On définit une petite fonction interne pour formater sans crash
+        def fmt(val):
+            return f"{val:.3f}" if (val is not None and isinstance(val, (int, float))) else "N/A"
 
+        m1.metric("💧 NDWI", fmt(val_ndwi))
+        m2.metric("🌫️ Turbidité", fmt(val_ndti))
+        m3.metric("🌿 NDVI", fmt(val_ndvi))
+        m4.metric("📐 Surface", f"{w_surf:.2f} km²" if w_surf else "N/A")
+        
             ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
             if ts is not None and not ts.empty:
                 fig = px.area(ts, x="date", y="NDWI", title="Historique Remplissage", color_discrete_sequence=['#00c9ff'])
