@@ -34,33 +34,27 @@ except Exception as e:
 
 # ── LOAD DATA ──
 @st.cache_data
+@st.cache_data
 def load_barrages():
     try:
-        # 1. Lecture du CSV avec vérification
+        # 1. Lecture du CSV
         df_csv = pd.read_csv("Data/barrages.csv")
         
-        # Sécurité : Si le CSV est vide ou mal lu
-        if df_csv.empty:
-            st.error("Le fichier CSV est vide.")
-            return pd.DataFrame()
-
-        # Nettoyage des colonnes
+        # Nettoyage des noms de colonnes (on utilise une liste en compréhension, c'est plus sûr)
         df_csv.columns = [str(c).strip().lower() for c in df_csv.columns]
         
-        # Nettoyage profond de la clé de jointure
+        # --- LA CORRECTION EST ICI (.str.lower()) ---
         if 'barrage' in df_csv.columns:
-            df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().lower().str.replace(' ', '').str.replace('-', '')
-        else:
-            st.error("La colonne 'barrage' est absente du CSV.")
-            return pd.DataFrame()
+            df_csv['barrage_key'] = df_csv['barrage'].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
         
         # 2. Lecture du GeoJSON
         gdf_sig = gpd.read_file("Data/barrages.geojson")
         gdf_sig.columns = [str(c).strip().lower() for c in gdf_sig.columns]
         
-        # Identification de la colonne nom dans le GeoJSON
         col_name = 'barrage' if 'barrage' in gdf_sig.columns else gdf_sig.columns[0]
-        gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().lower().str.replace(' ', '').str.replace('-', '')
+        
+        # --- ET ICI AUSSI ---
+        gdf_sig['barrage_key'] = gdf_sig[col_name].astype(str).str.strip().str.lower().str.replace(' ', '').str.replace('-', '')
         
         # 3. Fusion
         return gdf_sig.merge(df_csv, on="barrage_key", how="left")
