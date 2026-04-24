@@ -214,41 +214,36 @@ with tab3:
 
 with tab4:
     st.markdown("### 📄 Analyse Hydrologique & Rapport")
-    import io
     from processing.analysis import compute_risk, generate_alerts
 
-    # 1. On définit les variables PAR DÉFAUT pour éviter l'erreur 'not defined'
+    # 1. Préparation des variables
     r_label, r_score = compute_risk(ndwi, ndvi, ndti)
     a_list = generate_alerts(ndwi, ndvi, water, ndti)
 
     if st.button("🏗️ Préparer le rapport PDF"):
-        with st.spinner("Génération binaire en cours..."):
+        with st.spinner("Finalisation du fichier..."):
             try:
-                # 2. Appel de la fonction avec les variables définies juste au-dessus
-                pdf_obj = generate_pdf(
+                # 2. On appelle ta fonction
+                pdf_data = generate_pdf(
                     choice_key, row, ndwi, ndvi, water, 
                     r_label, r_score, a_list, 
                     start_str, end_str, ndti
                 )
                 
-                # 3. Extraction propre des données
-                output = pdf_obj.output()
-                if isinstance(output, str):
-                    pdf_bytes = output.encode('latin-1', errors='ignore')
-                else:
-                    pdf_bytes = output
-
-                st.session_state['pdf_ready'] = pdf_bytes
+                # 3. Puisque c'est un 'bytearray', on le transforme juste en 'bytes'
+                # C'est ce que Streamlit attend !
+                st.session_state['pdf_ready'] = bytes(pdf_data)
+                
                 st.success("✅ Rapport généré avec succès !")
             except Exception as e:
                 st.error(f"Erreur technique : {e}")
 
-    # 4. Le bouton de téléchargement (Sécurisé)
+    # 4. Le bouton de téléchargement
     if st.session_state.get('pdf_ready') is not None:
         st.download_button(
             label="📥 Télécharger le Rapport PDF",
             data=st.session_state['pdf_ready'],
             file_name=f"Rapport_{choice_key}.pdf",
             mime="application/pdf",
-            key="final_stable_btn"
+            key="btn_victoire_finale"
         )
