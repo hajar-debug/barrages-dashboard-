@@ -70,24 +70,23 @@ except Exception as e:
 # ── LOAD DATA ──
 @st.cache_data
 def load_barrages():
-    # 1. Charger le CSV
+    # 1. Charger le CSV et normaliser les noms de colonnes immédiatement
     df_csv = pd.read_csv("Data/barrages.csv")
+    df_csv.columns = df_csv.columns.str.strip().str.lower() # Met 'Barrage' en 'barrage'
     
-    # NETTOYAGE : On met les noms de barrages en minuscules et on enlève les espaces
+    # Création de la clé de fusion
     df_csv['barrage_key'] = df_csv['barrage'].str.strip().str.lower()
     
-    # 2. Charger le GeoJSON
+    # 2. Charger le GeoJSON et normaliser ses colonnes
     gdf_sig = gpd.read_file("Data/barrages.geojson")
+    gdf_sig.columns = gdf_sig.columns.str.strip().str.lower()
     
-    # NETTOYAGE : Même chose pour le GeoJSON
-    # (Vérifie bien que la colonne s'appelle 'barrage' dans QGIS aussi)
+    # Création de la clé de fusion pour le SIG
+    # Si ta colonne dans QGIS s'appelle 'nom', le code ci-dessous la trouvera car on a tout mis en minuscules
     gdf_sig['barrage_key'] = gdf_sig['barrage'].str.strip().str.lower()
     
-    # 3. Fusion sur la clé nettoyée
+    # 3. Fusion
     df_combined = gdf_sig.merge(df_csv, on="barrage_key", how="inner")
-    
-    # On nettoie les colonnes finales
-    df_combined.columns = df_combined.columns.str.strip().str.lower()
     
     return df_combined
 
