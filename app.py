@@ -161,21 +161,18 @@ with tab1:
     st_folium(m, width='stretch')
 
 with tab2:
+    st.markdown("### 📊 Analyses Spectrales & Séries Temporelles")
     from processing.indices import get_timeseries
     
+    # 1. RÉCUPÉRATION DES VARIABLES DEPUIS L'ÉTAT OU LE CALCUL
+    # On s'assure d'avoir des valeurs numériques pour éviter les crashs
+    current_water = water if 'water' in locals() else (surface_actuelle if 'surface_actuelle' in locals() else 0.0)
     
-   # --- BLOC DE SÉCURITÉ CORRIGÉ ---
-# On vérifie quel nom de variable tu as utilisé pour la surface
-# Si ta variable s'appelle 'surface', remplace 'surface_actuelle' par 'surface' ci-dessous
-
-try:
-    # On tente de récupérer la surface (on teste les deux noms courants)
-    s_val = surface_actuelle if 'surface_actuelle' in locals() else (surface if 'surface' in locals() else None)
-    
+    # Sécurité pour les métriques du haut
     disp_ndwi = f"{ndwi:.3f}" if (ndwi is not None and isinstance(ndwi, (int, float))) else "N/A"
     disp_ndti = f"{ndti:.3f}" if (ndti is not None and isinstance(ndti, (int, float))) else "N/A"
     disp_ndvi = f"{ndvi:.3f}" if (ndvi is not None and isinstance(ndvi, (int, float))) else "N/A"
-    disp_surf = f"{s_val:.2f}" if (s_val is not None and isinstance(s_val, (int, float))) else "0.00"
+    disp_surf = f"{current_water:.2f}" if (current_water is not None) else "0.00"
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("💧 NDWI (Eau)", disp_ndwi)
@@ -183,35 +180,41 @@ try:
     col3.metric("🌿 Végétation", disp_ndvi)
     col4.metric("📐 Surface", f"{disp_surf} km²")
 
-except Exception as e:
-    st.warning("Certaines métriques ne sont pas encore disponibles pour cette sélection.")
-# ------------------------
-    # Graphique historique
-    ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
+    # 2. GRAPHIQUES HISTORIQUES
+    st.divider()
+    with st.spinner("Chargement des séries temporelles..."):
+        ts = get_timeseries(lat, lon, start_str, end_str, cloud_pct, radius=10000)
+        
     if ts is not None and not ts.empty:
         import plotly.express as px
-        fig = px.area(ts, x="date", y="NDWI", title="Remplissage historique", color_discrete_sequence=['#00c9ff'])
+        # Graphique de remplissage
+        fig = px.area(ts, x="date", y="NDWI", title="📈 Évolution du Remplissage (NDWI)", 
+                     color_discrete_sequence=['#00c9ff'], template="plotly_dark")
         st.plotly_chart(fig, use_container_width=True)
         
-        fig_line = px.line(
-            ts, x="date", y=["NDWI", "Turbidité"],
-            template="plotly_dark",
-            color_discrete_map={"NDWI": "#00c9ff", "Turbidité": "#ffa500"}
-        )
+        # Comparaison Turbidité vs Eau
+        fig_line = px.line(ts, x="date", y=["NDWI", "Turbidité"],
+                          title="🔄 Corrélation Eau / Turbidité",
+                          template="plotly_dark",
+                          color_discrete_map={"NDWI": "#00c9ff", "Turbidité": "#ffa500"})
         st.plotly_chart(fig_line, use_container_width=True)
     else:
-        st.warning("📊 Aucune donnée historique disponible.")
+        st.warning("📊 Aucune donnée historique disponible pour cette période.")
 
-    st.markdown("### 🛰️ Bilan de Surface (Analyse Comparative)")
+    # 3. BILAN COMPARATIF (AUTOMATISÉ)
+    st.markdown("### 🛰️ Bilan de Surface (Analyse Comparative vs 2020)")
+    
+    # On récupère la surface de référence depuis ta ligne de données (row)
+    # Si 'Surface_2020' existe dans ton fichier CSV/Excel, on l'utilise
+    surf_ref_2020 = row['Surface_2020'] if 'Surface_2020' in row else 12.5 # 12.5 par défaut
+    
     col_a, col_b = st.columns(2)
     with col_a:
-        # Note: Assure-toi que cette fonction est importée ou définie
-        surface_initiale = 12.5  # Valeur exemple ou appel fonction
-        st.metric("Surface Janvier 2020", f"{surface_initiale:.2f} km²")
+        st.metric("Surface Janvier 2020 (Réf)", f"{surf_ref_2020:.2f} km²")
     with col_b:
-        delta = water - surface_initiale
-        st.metric("Surface Actuelle", f"{water:.2f} km²", delta=f"{delta:.2f} km²")
-
+        delta = current_water - surf_ref_2020
+        # Le paramètre 'delta' affichera une flèche verte (hausse) ou rouge (baisse)
+        st.metric("Surface Actuelle", f"{current_water:.2f} km²", delta=f"{delta:.2f} km²")
 with tab3:
     from processing.analysis import compute_risk, generate_alerts
     rl, rs = compute_risk(ndwi, ndvi, ndti)
