@@ -214,43 +214,37 @@ with tab3:
 
 with tab4:
     st.markdown("### 📄 Analyse Hydrologique & Rapport")
-    
-    from processing.analysis import compute_risk, generate_alerts
-    risk_label, risk_score = compute_risk(ndwi, ndvi, ndti)
-    alerts_list = generate_alerts(ndwi, ndvi, water, ndti)
+    import io
 
     if st.button("🏗️ Préparer le rapport PDF"):
-        with st.spinner("Conversion en format binaire..."):
+        with st.spinner("Extraction binaire..."):
             try:
-                pdf_obj = generate_pdf(
-                    choice_key, row, ndwi, ndvi, water, 
-                    risk_label, risk_score, alerts_list, 
-                    start_str, end_str, ndti
-                )
+                # 1. On génère l'objet PDF
+                pdf = generate_pdf(choice_key, row, ndwi, ndvi, water, risk_label, risk_score, alerts_list, start_str, end_str, ndti)
                 
-                # --- LA SOLUTION MIRACLE ---
-                # On utilise la méthode output() de FPDF pour obtenir les bytes directement
-                # Si tu utilises fpdf2, output() sans paramètres renvoie des bytes
-                pdf_bytes = pdf_obj.output() 
+                # 2. On transforme le PDF en bytes de manière universelle
+                # On essaie d'abord la méthode fpdf2 (la plus courante)
+                pdf_output = pdf.output()
                 
-                # Sécurité si c'est une ancienne version qui renvoie du texte
-                if isinstance(pdf_bytes, str):
-                    pdf_bytes = pdf_bytes.encode('latin-1', errors='ignore')
-                
+                if isinstance(pdf_output, str):
+                    # Si c'est du texte (ancienne version), on convertit
+                    pdf_bytes = pdf_output.encode('latin-1', errors='ignore')
+                else:
+                    # Si c'est déjà des bytes, on les garde
+                    pdf_bytes = pdf_output
+
+                # On stocke dans le session_state
                 st.session_state['pdf_ready'] = pdf_bytes
                 st.success("✅ Rapport prêt !")
             except Exception as e:
                 st.error(f"Erreur technique : {e}")
 
-    # Le bouton de téléchargement (On vérifie que c'est bien des bytes)
-    if st.session_state.get('pdf_ready') is not None:
-        try:
-            st.download_button(
-                label="📥 Télécharger le Rapport PDF",
-                data=st.session_state['pdf_ready'],
-                file_name=f"Rapport_{choice_key}.pdf",
-                mime="application/pdf",
-                key="download_v12" # On change la clé pour forcer le rafraîchissement
-            )
-        except Exception as e:
-            st.error("Le format du fichier est invalide pour le téléchargement.")
+    # --- LE BOUTON DE TÉLÉCHARGEMENT ---
+    if 'pdf_ready' in st.session_state and st.session_state['pdf_ready'] is not None:
+        st.download_button(
+            label="📥 Télécharger le Rapport PDF",
+            data=st.session_state['pdf_ready'],
+            file_name=f"Rapport_Barrage_{choice_key}.pdf",
+            mime="application/pdf",
+            key="final_v_100"
+        )
