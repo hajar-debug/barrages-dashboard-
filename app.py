@@ -221,27 +221,31 @@ with tab4:
     else:
         st.error("🚨 **Alerte** : Sécheresse critique.")
 
+    # --- SECTION RAPPORT PDF (Ligne 225) ---
     st.markdown("---")
     if st.button("🏗️ Préparer le rapport PDF"):
-    with st.spinner("Génération..."):
-        try:
-            # On génère le PDF
-            pdf = generate_pdf(choice_key, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
-            
-            # On récupère les bytes proprement selon la version de FPDF
-            if isinstance(pdf, str):
-                pdf_bytes = pdf.encode('latin-1', errors='ignore')
-            else:
-                pdf_bytes = pdf.output(dest='S') # Pour FPDF2, c'est déjà des bytes
-            
-            st.session_state['pdf_ready'] = pdf_bytes
-            st.success("Rapport généré avec succès !")
-        except Exception as e:
-            st.error(f"Erreur PDF : {e}")
+        # Cette ligne DOIT être décalée par rapport au 'if'
+        with st.spinner("Génération..."):
+            try:
+                # On génère le PDF (Assure-toi que les variables existent)
+                pdf_output = generate_pdf(choice_key, row, ndwi, ndvi, water, rl, rs, al, start_str, end_str, ndti)
+                
+                # Extraction sécurisée des données binaires
+                if hasattr(pdf_output, 'output'):
+                    pdf_bytes = pdf_output.output(dest='S')
+                else:
+                    pdf_bytes = pdf_output
+                
+                st.session_state['pdf_ready'] = pdf_bytes
+                st.success("✅ Rapport prêt !")
+            except Exception as e:
+                st.error(f"Erreur de génération : {e}")
+
+    # Le bouton de téléchargement (aligné avec le premier 'if')
     if st.session_state.get('pdf_ready'):
-    st.download_button(
-        label="📥 Télécharger le Rapport PDF",
-        data=st.session_state['pdf_ready'],
-        file_name=f"Rapport_{choice_key}.pdf",
-        mime="application/pdf"
-    )
+        st.download_button(
+            label="📥 Télécharger le Rapport PDF",
+            data=st.session_state['pdf_ready'],
+            file_name=f"Rapport_{choice_key}.pdf",
+            mime="application/pdf"
+        )
