@@ -8,7 +8,7 @@ from report.report_generator import generate_pdf
 from datetime import datetime
 from processing.indices import get_metrics, water_surface, get_timeseries
 from processing.maps import build_map
-
+from processing.indices import get_annual_reference_2020
 st.set_page_config(
     page_title="Barrages Maroc | Dashboard SIG",
     page_icon="💧",
