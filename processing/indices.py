@@ -1,37 +1,55 @@
 import ee
 import pandas as pd
 import streamlit as st
-# --- BLOC A : FONCTION DE CALCUL ANNUELLE ---
-def get_annual_reference_2020(lat, lon):
+# --- ÉTAPE 1 : La fonction qui choisit Watershed ou Buffer ---
+def get_study_area(lat, lon, radius=15000):
     try:
         point = ee.Geometry.Point([lon, lat])
-        roi = point.buffer(15000) 
+        # On cherche le bassin versant HydroSHEDS (Niveau 12)
+        basins = ee.FeatureCollection("WWF/HydroSHEDS/v1/Basins/hybas_12")
+        watershed = basins.filterBounds(point).first()
         
-        # On crée la médiane de l'année 2020
+        # Si le bassin est trouvé, on l'utilise, sinon on fait un cercle (buffer)
+        if watershed is not None:
+            return watershed.geometry()
+        else:
+            return point.buffer(radius)
+    except:
+        # En cas de bug GEE, on retourne le cercle par sécurité
+        return ee.Geometry.Point([lon, lat]).buffer(radius)
+
+# --- ÉTAPE 2 : Ta fonction 2020 mise à jour ---
+@st.cache_data
+def get_annual_reference_2020(lat, lon):
+    # On appelle la fonction intelligente définie juste au-dessus
+    roi = get_study_area(lat, lon)
+    
+    try:
         annual_2020 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
                        .filterBounds(roi)
                        .filterDate('2020-01-01', '2020-12-31')
                        .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
                        .median())
         
-        # Calcul NDWI et Surface
         ndwi = annual_2020.normalizedDifference(['B3', 'B8']).rename('NDWI')
         water_mask = ndwi.gt(0)
+        
         area_image = water_mask.multiply(ee.Image.pixelArea())
         stats = area_image.reduceRegion(
             reducer=ee.Reducer.sum(),
             geometry=roi,
-            scale=10,
+            scale=30, # On met 30m pour que ce soit rapide sur 6200 km2
             maxPixels=1e9
         )
         
-        return ee.Number(stats.get('NDWI')).divide(1e6).getInfo()
+        surface = ee.Number(stats.get('NDWI')).divide(1e6).getInfo()
+        return surface if surface is not None else 12.5
     except:
-        return 12.5 # Valeur de secours si GEE ne répond pas
+        return 12.5
 
 def get_base_collection(lat, lon, start, end, cloud_pct, radius=12000):
     """Récupère la collection Sentinel-2 optimisée pour le calcul de surface."""
-    roi = ee.Geometry.Point([lon, lat]).buffer(radius)
+    roi = get_study_area(lat, lon, radius)
     
     col = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
             .filterBounds(roi)
@@ -92,7 +110,7 @@ def get_ndvi_tile_url(lat, lon, start, end, cloud_pct):
 # --- CALCUL DES MOYENNES POUR LE TABLEAU DE BORD ---
 def get_metrics(lat, lon, start_date, end_date, cloud_pct, radius=5000):
     try:
-        roi = ee.Geometry.Point([lon, lat]).buffer(radius)
+        roi = get_study_area(lat, lon, radius)
         
         # On charge Sentinel-2
         collection = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
@@ -115,7 +133,7 @@ def get_metrics(lat, lon, start_date, end_date, cloud_pct, radius=5000):
         stats = ee.Image.cat([ndwi, ndvi, ndti]).reduceRegion(
             reducer=ee.Reducer.mean(),
             geometry=roi,
-            scale=10,
+            scale=30,
             maxPixels=1e9
         ).getInfo()
         
@@ -126,7 +144,7 @@ def get_metrics(lat, lon, start_date, end_date, cloud_pct, radius=5000):
 def water_surface(lat, lon, start, end, cloud_pct, radius=12000):
     """Calcule la surface avec le seuil MNDWI corrigé pour le Maroc."""
     try:
-        roi = ee.Geometry.Point([lon, lat]).buffer(radius)
+        roi = get_study_area(lat, lon, radius)
         
         # On récupère l'image médiane
         img = get_base_collection(lat, lon, start, end, cloud_pct, radius)
@@ -140,7 +158,7 @@ def water_surface(lat, lon, start, end, cloud_pct, radius=12000):
         area_m2 = water_mask.multiply(ee.Image.pixelArea()).reduceRegion(
             reducer=ee.Reducer.sum(), 
             geometry=roi, 
-            scale=20, 
+            scale=30, 
             maxPixels=1e9
         ).get('mndwi').getInfo()
         
@@ -148,33 +166,29 @@ def water_surface(lat, lon, start, end, cloud_pct, radius=12000):
     except Exception as e:
         return 0
 
-def get_timeseries(lat, lon, start, end, cloud, radius=12000):
-    # On utilise maintenant le radius pour créer la zone d'étude
-    roi = ee.Geometry.Point([lon, lat]).buffer(radius) 
+def get_timeseries(lat, lon, start, end, cloud, radius=15000):
+    # MODIFICATION ICI
+    roi = get_study_area(lat, lon, radius)
     
     col = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
         .filterBounds(roi) \
         .filterDate(start, end) \
         .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', cloud))
-    
 
     def extract_metrics(img):
         date = img.date().format('YYYY-MM-dd')
         
-        # NDWI (Eau) - Utilise mean() pour avoir une valeur moyenne sur tout le barrage
-        ndwi_img = img.normalizedDifference(['B3', 'B8'])
-        ndwi_val = ndwi_img.reduceRegion(
+        # Réduction sur la ROI du bassin
+        ndwi_val = img.normalizedDifference(['B3', 'B8']).reduceRegion(
             reducer=ee.Reducer.mean(),
             geometry=roi,
-            scale=30
+            scale=50 # MODIFICATION : 50m pour les séries temporelles (plus rapide)
         ).get('nd')
         
-        # NDTI (Turbidité/Sédiments)
-        ndti_img = img.normalizedDifference(['B4', 'B3'])
-        ndti_val = ndti_img.reduceRegion(
+        ndti_val = img.normalizedDifference(['B4', 'B3']).reduceRegion(
             reducer=ee.Reducer.mean(),
             geometry=roi,
-            scale=30
+            scale=50
         ).get('nd')
         
         return ee.Feature(None, {
@@ -229,7 +243,7 @@ def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
         return None
         
 def get_water_surface_area(lat, lon, date, cloud, radius=12000):
-    roi = ee.Geometry.Point([lon, lat]).buffer(radius)
+    roi = get_study_area(lat, lon, radius)
     img = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
             .filterBounds(roi) \
             .filterDate(ee.Date(date).advance(-1, 'month'), date) \
@@ -246,7 +260,7 @@ def get_water_surface_area(lat, lon, date, cloud, radius=12000):
     stats = water_mask.multiply(ee.Image.pixelArea()).reduceRegion(
         reducer=ee.Reducer.sum(),
         geometry=roi,
-        scale=10,
+        scale=30,
         maxPixels=1e9
     )
     

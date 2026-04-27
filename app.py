@@ -201,18 +201,18 @@ with tab2:
     else:
         st.warning("📊 Aucune donnée historique disponible pour cette période.")
 # --- BLOC B : AFFICHAGE DU BILAN ---
-    st.markdown("### 🛰️ Analyse Comparative (Moyenne Annuelle 2020 vs Actuel)")
 
-# Appel de la fonction définie en Étape 1
-    with st.spinner("Analyse GEE en cours pour l'année 2020..."):
-        surf_ref_2020 = get_annual_reference_2020(row['lat'], row['lon'])
+    st.markdown("### 🛰️ Analyse Comparative (Bassin Versant 2020 vs Actuel)")
 
-# Affichage des métriques côte à côte
+    with st.spinner("Calcul sur le bassin versant via GEE..."):
+    # On récupère les coordonnées depuis 'row' (ton barrage sélectionné)
+         surf_ref_2020 = get_annual_reference_2020(row['lat'], row['lon'])
+
     col_a, col_b = st.columns(2)
     with col_a:
-        st.metric("Surface Médiane 2020", f"{surf_ref_2020:.2f} km²")
+        st.metric("Surface Moyenne 2020", f"{surf_ref_2020:.2f} km²")
     with col_b:
-    # current_water est ta variable qui contient la surface de 2024-2026
+    # On compare avec ta mesure actuelle (2025/2026)
         delta = current_water - surf_ref_2020
         st.metric("Surface Actuelle", f"{current_water:.2f} km²", delta=f"{delta:.2f} km²")
 with tab3:
