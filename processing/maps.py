@@ -67,4 +67,4 @@ def build_map(lat, lon, row, start, end, cloud, show_ndwi, show_ndvi, show_rgb, 
     folium.LayerControl(position='topright').add_to(m)
     plugins.Fullscreen().add_to(m)
 
-    return m
+    return m 

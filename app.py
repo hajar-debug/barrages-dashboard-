@@ -58,7 +58,7 @@ expert_facts = {
 }
 
 # ── Sidebar ──
-with st.sidebar:
+with st.sidebar: 
     st.title("💧 Barrages ")
     if not df.empty:
         barrage_list = sorted(df["barrage_key"].str.upper().unique().tolist())
@@ -200,21 +200,21 @@ with tab2:
         st.plotly_chart(fig_line, use_container_width=True)
     else:
         st.warning("📊 Aucune donnée historique disponible pour cette période.")
+# --- BLOC B : AFFICHAGE DU BILAN ---
+    st.markdown("### 🛰️ Analyse Comparative (Moyenne Annuelle 2020 vs Actuel)")
 
-    # 3. BILAN COMPARATIF (AUTOMATISÉ)
-    st.markdown("### 🛰️ Bilan de Surface (Analyse Comparative vs 2020)")
-    
-    # On récupère la surface de référence depuis ta ligne de données (row)
-    # Si 'Surface_2020' existe dans ton fichier CSV/Excel, on l'utilise
-    surf_ref_2020 = row['Surface_2020'] if 'Surface_2020' in row else 12.5 # 12.5 par défaut
-    
-    col_a, col_b = st.columns(2)
+# Appel de la fonction définie en Étape 1
+    with st.spinner("Analyse GEE en cours pour l'année 2020..."):
+        surf_ref_2020 = get_annual_reference_2020(row['lat'], row['lon'])
+
+# Affichage des métriques côte à côte
+col_a, col_b = st.columns(2)
     with col_a:
-        st.metric("Surface Janvier 2020 (Réf)", f"{surf_ref_2020:.2f} km²")
+        st.metric("Surface Médiane 2020", f"{surf_ref_2020:.2f} km²")
     with col_b:
-        delta = current_water - surf_ref_2020
-        # Le paramètre 'delta' affichera une flèche verte (hausse) ou rouge (baisse)
-        st.metric("Surface Actuelle", f"{current_water:.2f} km²", delta=f"{delta:.2f} km²")
+    # current_water est ta variable qui contient la surface de 2024-2026
+    delta = current_water - surf_ref_2020
+    st.metric("Surface Actuelle", f"{current_water:.2f} km²", delta=f"{delta:.2f} km²")
 with tab3:
     from processing.analysis import compute_risk, generate_alerts
     rl, rs = compute_risk(ndwi, ndvi, ndti)

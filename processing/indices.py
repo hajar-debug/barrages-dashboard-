@@ -1,8 +1,35 @@
 import ee
 import pandas as pd
 import streamlit as st
+# --- BLOC A : FONCTION DE CALCUL ANNUELLE ---
+def get_annual_reference_2020(lat, lon):
+    try:
+        point = ee.Geometry.Point([lon, lat])
+        roi = point.buffer(15000) 
+        
+        # On crée la médiane de l'année 2020
+        annual_2020 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+                       .filterBounds(roi)
+                       .filterDate('2020-01-01', '2020-12-31')
+                       .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
+                       .median())
+        
+        # Calcul NDWI et Surface
+        ndwi = annual_2020.normalizedDifference(['B3', 'B8']).rename('NDWI')
+        water_mask = ndwi.gt(0)
+        area_image = water_mask.multiply(ee.Image.pixelArea())
+        stats = area_image.reduceRegion(
+            reducer=ee.Reducer.sum(),
+            geometry=roi,
+            scale=10,
+            maxPixels=1e9
+        )
+        
+        return ee.Number(stats.get('NDWI')).divide(1e6).getInfo()
+    except:
+        return 12.5 # Valeur de secours si GEE ne répond pas
 
-def get_base_collection(lat, lon, start, end, cloud_pct, radius=8000):
+def get_base_collection(lat, lon, start, end, cloud_pct, radius=12000):
     """Récupère la collection Sentinel-2 optimisée pour le calcul de surface."""
     roi = ee.Geometry.Point([lon, lat]).buffer(radius)
     
@@ -22,7 +49,7 @@ def get_ndti_tile_url(lat, lon, start, end, cloud_pct):
     import ee
     try:
         # On définit la zone (buffer de 5km autour du barrage)
-        point = ee.Geometry.Point([lon, lat]).buffer(8000).bounds()
+        point = ee.Geometry.Point([lon, lat]).buffer(12000).bounds()
         
         # Collection Sentinel-2
         col = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
@@ -96,7 +123,7 @@ def get_metrics(lat, lon, start_date, end_date, cloud_pct, radius=5000):
     except Exception as e:
         return {"ndwi": None, "ndvi": None, "ndti": None}
 
-def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
+def water_surface(lat, lon, start, end, cloud_pct, radius=12000):
     """Calcule la surface avec le seuil MNDWI corrigé pour le Maroc."""
     try:
         roi = ee.Geometry.Point([lon, lat]).buffer(radius)
@@ -106,7 +133,7 @@ def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
         
         # MNDWI (B3, B11) est plus robuste que le NDWI classique pour les sédiments
         mndwi = img.normalizedDifference(['B3', 'B11']).rename('mndwi')
-        
+         
         # SEUIL CRITIQUE : On passe à 0.0 pour ne pas perdre de surface en hiver
         water_mask = mndwi.gt(0.0) 
         
@@ -121,7 +148,7 @@ def water_surface(lat, lon, start, end, cloud_pct, radius=8000):
     except Exception as e:
         return 0
 
-def get_timeseries(lat, lon, start, end, cloud, radius=8000):
+def get_timeseries(lat, lon, start, end, cloud, radius=12000):
     # On utilise maintenant le radius pour créer la zone d'étude
     roi = ee.Geometry.Point([lon, lat]).buffer(radius) 
     
@@ -177,7 +204,7 @@ def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
     """Génère l'URL de la couche Sentinel-2 en vraies couleurs (RGB)"""
     import ee
     try:
-        point = ee.Geometry.Point([lon, lat]).buffer(8000).bounds()
+        point = ee.Geometry.Point([lon, lat]).buffer(12000).bounds()
         
         # Sélection des bandes B4 (Red), B3 (Green), B2 (Blue)
         rgb = (ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
@@ -201,7 +228,7 @@ def get_rgb_tile_url(lat, lon, start, end, cloud_pct):
         print(f"Erreur RGB Tile: {e}")
         return None
         
-def get_water_surface_area(lat, lon, date, cloud, radius=8000):
+def get_water_surface_area(lat, lon, date, cloud, radius=12000):
     roi = ee.Geometry.Point([lon, lat]).buffer(radius)
     img = ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED") \
             .filterBounds(roi) \
