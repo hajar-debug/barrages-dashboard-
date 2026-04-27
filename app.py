@@ -208,13 +208,13 @@ with tab2:
         surf_ref_2020 = get_annual_reference_2020(row['lat'], row['lon'])
 
 # Affichage des métriques côte à côte
-col_a, col_b = st.columns(2)
+    col_a, col_b = st.columns(2)
     with col_a:
         st.metric("Surface Médiane 2020", f"{surf_ref_2020:.2f} km²")
     with col_b:
     # current_water est ta variable qui contient la surface de 2024-2026
-    delta = current_water - surf_ref_2020
-    st.metric("Surface Actuelle", f"{current_water:.2f} km²", delta=f"{delta:.2f} km²")
+        delta = current_water - surf_ref_2020
+        st.metric("Surface Actuelle", f"{current_water:.2f} km²", delta=f"{delta:.2f} km²")
 with tab3:
     from processing.analysis import compute_risk, generate_alerts
     rl, rs = compute_risk(ndwi, ndvi, ndti)
